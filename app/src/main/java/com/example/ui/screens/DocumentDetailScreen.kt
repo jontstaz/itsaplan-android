@@ -1,9 +1,11 @@
 package com.example.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Archive
@@ -27,6 +30,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -57,6 +61,7 @@ fun DocumentDetailScreen(
     BackHandler(onBack = onBack)
 
     var isEditing by remember(doc?.id) { mutableStateOf(false) }
+    var showEditorPreview by remember(doc?.id) { mutableStateOf(false) }
     var editedTitle by remember(doc?.id) { mutableStateOf(doc?.title.orEmpty()) }
     var editedContent by remember(doc?.id) { mutableStateOf(doc?.content.orEmpty()) }
     var showArchiveConfirm by remember { mutableStateOf(false) }
@@ -147,13 +152,47 @@ fun DocumentDetailScreen(
                                 singleLine = true,
                                 modifier = Modifier.fillMaxWidth()
                             )
-                            OutlinedTextField(
-                                value = editedContent,
-                                onValueChange = { editedContent = it },
-                                label = { Text("Content (Markdown)") },
-                                minLines = 12,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                TextButton(onClick = { showEditorPreview = !showEditorPreview }) {
+                                    Text(if (showEditorPreview) "Edit" else "Preview")
+                                }
+                            }
+                            if (showEditorPreview) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Box(modifier = Modifier.padding(12.dp)) {
+                                        if (editedContent.isBlank()) {
+                                            Text(
+                                                text = "Nothing to preview.",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        } else {
+                                            ThemedMarkdownText(
+                                                markdown = editedContent,
+                                                style = MaterialTheme.typography.bodyMedium.copy(
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                            )
+                                        }
+                                    }
+                                }
+                            } else {
+                                OutlinedTextField(
+                                    value = editedContent,
+                                    onValueChange = { editedContent = it },
+                                    label = { Text("Content (Markdown)") },
+                                    minLines = 12,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
                         }
                     } else {
                         Column(

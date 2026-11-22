@@ -3,6 +3,7 @@ package com.example.ui.screens
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -33,6 +34,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.AlertDialog
@@ -514,6 +516,7 @@ fun CommentComposerBar(
 ) {
     var text by remember { mutableStateOf("") }
     var showMentions by remember { mutableStateOf(false) }
+    var showPreview by remember { mutableStateOf(false) }
 
     Surface(
         tonalElevation = 4.dp,
@@ -583,11 +586,23 @@ fun CommentComposerBar(
                         .testTag("comment_composer_input")
                 )
                 IconButton(
+                    onClick = { showPreview = !showPreview },
+                    enabled = text.isNotBlank(),
+                    modifier = Modifier.testTag("comment_preview_button")
+                ) {
+                    Icon(
+                        imageVector = if (showPreview) Icons.Rounded.Edit else Icons.Rounded.Visibility,
+                        contentDescription = if (showPreview) "Edit comment" else "Preview comment",
+                        tint = if (showPreview) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                IconButton(
                     onClick = {
                         val trimmed = text.trim()
                         if (trimmed.isNotEmpty()) {
                             onSend(trimmed)
                             text = ""
+                            showPreview = false
                         }
                     },
                     enabled = text.isNotBlank() && !isSubmitting,
@@ -600,6 +615,24 @@ fun CommentComposerBar(
                             Icons.AutoMirrored.Rounded.Send,
                             contentDescription = "Send comment",
                             tint = if (text.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            if (showPreview && text.isNotBlank()) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                ) {
+                    Box(modifier = Modifier.padding(12.dp)) {
+                        com.example.ui.components.ThemedMarkdownText(
+                            markdown = text,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                         )
                     }
                 }
@@ -617,10 +650,22 @@ fun EditTitleDescriptionDialog(
 ) {
     var title by remember { mutableStateOf(initialTitle) }
     var desc by remember { mutableStateOf(initialDescription) }
+    var showPreview by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit Issue") },
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Edit Issue")
+                TextButton(onClick = { showPreview = !showPreview }) {
+                    Text(if (showPreview) "Edit" else "Preview")
+                }
+            }
+        },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
@@ -630,14 +675,40 @@ fun EditTitleDescriptionDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
-                    value = desc,
-                    onValueChange = { desc = it },
-                    label = { Text("Description (Markdown)") },
-                    minLines = 4,
-                    maxLines = 8,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                if (showPreview) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(modifier = Modifier.padding(12.dp)) {
+                            if (desc.isBlank()) {
+                                Text(
+                                    text = "Nothing to preview.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            } else {
+                                com.example.ui.components.ThemedMarkdownText(
+                                    markdown = desc,
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    OutlinedTextField(
+                        value = desc,
+                        onValueChange = { desc = it },
+                        label = { Text("Description (Markdown)") },
+                        minLines = 4,
+                        maxLines = 8,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         },
         confirmButton = {
