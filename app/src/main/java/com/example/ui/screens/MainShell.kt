@@ -45,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import kotlinx.coroutines.launch
 import com.example.data.model.CurrentUserDto
 import com.example.ui.layout.AppWindowSize
 import com.example.ui.layout.TwoPaneListDetail
@@ -75,7 +76,8 @@ enum class MainTab(
 
 private data class OpenIssueEntry(
     val issueId: Int,
-    val projectRef: String?
+    val projectRef: String?,
+    val targetCommentId: Int? = null
 )
 
 private val OpenIssueStackSaver = androidx.compose.runtime.saveable.Saver<
@@ -83,14 +85,14 @@ private val OpenIssueStackSaver = androidx.compose.runtime.saveable.Saver<
     ArrayList<Any?>
 >(
     save = { list ->
-        ArrayList(list.flatMap { listOf<Any?>(it.issueId, it.projectRef) })
+        ArrayList(list.flatMap { listOf<Any?>(it.issueId, it.projectRef, it.targetCommentId) })
     },
     restore = { flat ->
         val restored = androidx.compose.runtime.mutableStateListOf<OpenIssueEntry>()
         var i = 0
-        while (i + 1 < flat.size) {
-            restored.add(OpenIssueEntry(flat[i] as Int, flat[i + 1] as String?))
-            i += 2
+        while (i + 2 < flat.size) {
+            restored.add(OpenIssueEntry(flat[i] as Int, flat[i + 1] as String?, flat[i + 2] as Int?))
+            i += 3
         }
         restored
     }
@@ -116,8 +118,28 @@ fun MainShell(
     var showFilterSheet by remember { mutableStateOf(false) }
     var createIssueInitialColumn by remember { mutableStateOf<Int?>(null) }
     var showCreateIssueSheet by remember { mutableStateOf(false) }
+    var showGlobalSearch by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val recentStore = remember { com.example.data.local.RecentIssuesStore(context.applicationContext) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var recentIssues by remember { mutableStateOf<List<com.example.data.local.RecentIssue>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        recentIssues = recentStore.load()
+    }
+
+    fun openIssueAndRecord(id: Int, projRef: String?, targetCommentId: Int? = null) {
+        issueStack.add(OpenIssueEntry(id, projRef, targetCommentId))
+        val boardIssue = appState.boardIssues.firstOrNull { it.id == id }
+        val identifier = boardIssue?.identifier ?: "#$id"
+        val title = boardIssue?.title ?: ""
+        scope.launch {
+            recentStore.record(com.example.data.local.RecentIssue(id, identifier, title, projRef))
+            recentIssues = recentStore.load()
+        }
+    }
 
     LaunchedEffect(appState.snackbarMessage) {
         appState.snackbarMessage?.let { msg ->
@@ -143,6 +165,7 @@ fun MainShell(
             currentUser = user,
             knownBoard = knownBoard,
             knownProjectRef = activeIssue.projectRef ?: appState.selectedProject?.routeKey,
+            targetCommentId = activeIssue.targetCommentId,
             viewModel = issueDetailViewModel,
             onBack = {
                 if (issueFullscreen) issueFullscreen = false
@@ -246,7 +269,7 @@ fun MainShell(
                                     cyclesViewModel = cyclesViewModel,
                                     docsViewModel = docsViewModel,
                                     windowSize = windowSize,
-                                    onOpenIssue = { id, projRef -> issueStack.add(OpenIssueEntry(id, projRef)) },
+                                    onOpenIssue = { id, projRef -> openIssueAndRecord(id, projRef) },
                                     onOpenProjectSwitcher = { showProjectSwitcher = true },
                                     onOpenFilterSheet = { showFilterSheet = true },
                                     onQuickCreateInColumn = { colId ->
@@ -254,9 +277,12 @@ fun MainShell(
                                         showCreateIssueSheet = true
                                     },
                                     onSwitchTab = { currentTab = it },
+                                    recentIssues = recentIssues,
                                     // Inside a 320dp list pane the Kanban columns
                                     // would clip. Force the vertical list view.
-                                    forceBoardListView = true
+                                    forceBoardListView = true,
+                                    onOpenGlobalSearch = { showGlobalSearch = true },
+                                    onOpenComment = { id, ref, commentId -> openIssueAndRecord(id, ref, commentId) }
                                 )
                             },
                             detailPane = {
@@ -265,6 +291,7 @@ fun MainShell(
                                     currentUser = user,
                                     knownBoard = if (activeIssue.projectRef == null || activeIssue.projectRef == appState.selectedProject?.routeKey) appState.projectBoard else null,
                                     knownProjectRef = activeIssue.projectRef ?: appState.selectedProject?.routeKey,
+                                    targetCommentId = activeIssue.targetCommentId,
                                     viewModel = issueDetailViewModel,
                                     onBack = { if (issueStack.isNotEmpty()) issueStack.removeAt(issueStack.lastIndex) },
                                     onNavigateToIssue = { nextId -> issueStack.add(OpenIssueEntry(nextId, activeIssue.projectRef)) },
@@ -286,14 +313,17 @@ fun MainShell(
                             cyclesViewModel = cyclesViewModel,
                             docsViewModel = docsViewModel,
                             windowSize = windowSize,
-                            onOpenIssue = { id, projRef -> issueStack.add(OpenIssueEntry(id, projRef)) },
+                            onOpenIssue = { id, projRef -> openIssueAndRecord(id, projRef) },
                             onOpenProjectSwitcher = { showProjectSwitcher = true },
                             onOpenFilterSheet = { showFilterSheet = true },
                             onQuickCreateInColumn = { colId ->
                                 createIssueInitialColumn = colId
                                 showCreateIssueSheet = true
                             },
-                            onSwitchTab = { currentTab = it }
+                            onSwitchTab = { currentTab = it },
+                            recentIssues = recentIssues,
+                            onOpenGlobalSearch = { showGlobalSearch = true },
+                            onOpenComment = { id, ref, commentId -> openIssueAndRecord(id, ref, commentId) }
                         )
                     }
                 }
@@ -301,6 +331,23 @@ fun MainShell(
         }
 
     // Sheets
+    if (showGlobalSearch) {
+        GlobalSearchDialog(
+            results = appState.globalSearchResults,
+            isSearching = appState.isGlobalSearching,
+            onQueryChanged = { appViewModel.searchGlobally(it) },
+            onOpenIssue = { hit ->
+                openIssueAndRecord(hit.id, hit.projectRef.ifBlank { null })
+                showGlobalSearch = false
+                appViewModel.clearGlobalSearch()
+            },
+            onDismiss = {
+                showGlobalSearch = false
+                appViewModel.clearGlobalSearch()
+            }
+        )
+    }
+
     if (showProjectSwitcher) {
         ProjectSwitcherSheet(
             projects = appState.projects,
@@ -371,7 +418,10 @@ private fun MainTabContent(
     onOpenFilterSheet: () -> Unit,
     onQuickCreateInColumn: (Int) -> Unit,
     onSwitchTab: (MainTab) -> Unit,
-    forceBoardListView: Boolean = false
+    forceBoardListView: Boolean = false,
+    recentIssues: List<com.example.data.local.RecentIssue> = emptyList(),
+    onOpenGlobalSearch: () -> Unit,
+    onOpenComment: (Int, String?, Int) -> Unit
 ) {
     when (currentTab) {
         MainTab.BOARD -> {
@@ -390,7 +440,9 @@ private fun MainTabContent(
                 onMoveIssue = { issue, targetColId ->
                     appViewModel.moveIssueToColumn(issue, targetColId)
                 },
-                forceListView = forceBoardListView
+                forceListView = forceBoardListView,
+                recentIssues = recentIssues,
+                onOpenGlobalSearch = onOpenGlobalSearch
             )
         }
 
@@ -407,6 +459,7 @@ private fun MainTabContent(
                 viewModel = inboxViewModel,
                 onUnreadChanged = { appViewModel.refreshUnreadCount() },
                 onOpenIssue = onOpenIssue,
+                onOpenComment = onOpenComment,
                 onShowMessage = { appViewModel.showSnackbar(it) }
             )
         }

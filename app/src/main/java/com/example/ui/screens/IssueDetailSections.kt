@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -259,13 +260,15 @@ fun ChecklistsCard(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun IssueFeedSection(
     items: List<FeedItemDto>,
     counts: FeedCountsDto,
     selectedFilter: FeedFilter,
     currentUserId: String,
+    highlightedCommentId: Int? = null,
+    targetCommentId: Int? = null,
     hasMore: Boolean,
     onSelectFilter: (FeedFilter) -> Unit,
     onLoadMore: () -> Unit,
@@ -309,11 +312,23 @@ fun IssueFeedSection(
                 when (item.kind.lowercase()) {
                     "comment" -> {
                         val cid = item.id
+                        val bringIntoViewRequester = remember(cid) { androidx.compose.foundation.relocation.BringIntoViewRequester() }
+                        LaunchedEffect(targetCommentId, cid) {
+                            if (targetCommentId == cid) bringIntoViewRequester.bringIntoView()
+                        }
+                        val isHighlighted = highlightedCommentId == cid
                         val parentComment = item.replyToId?.let { commentById[it] }
                         Card(
                             shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                                else MaterialTheme.colorScheme.surface
+                            ),
+                            border = BorderStroke(
+                                if (isHighlighted) 2.dp else 1.dp,
+                                if (isHighlighted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                            ),
+                            modifier = Modifier.bringIntoViewRequester(bringIntoViewRequester)
                         ) {
                             Column(
                                 modifier = Modifier.fillMaxWidth().padding(12.dp),

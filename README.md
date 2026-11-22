@@ -14,20 +14,27 @@ foldables (unfolded two-pane layouts on wide screens).
 ## Features
 
 - **Board** — Kanban and grouped-list views of a project's issues, drag-free quick move between
-  columns, filters (priority, assignee, label, cycle), search, and quick issue creation.
+  columns, filters (priority, assignee, label, cycle), search, quick issue creation, and a
+  recent-issues strip for jumping back into work.
 - **Issue detail** — markdown-rendered description and comments, metadata editing (status,
   priority, assignee, AI delegate, type, cycle, due date, estimates), labels, custom fields,
   checklists, subtasks, linked issues, attachments (photo/file picker), time tracking (worklogs),
   watch/unwatch, archive/restore/delete, AI agent run history, and linked **pull requests /
-  branches** from connected Git providers (GitHub, GitLab, Gitea, Forgejo, Bitbucket).
-- **Activity & comments** — threaded comments with replies, emoji reactions, edit/delete, and a
-  combined activity feed (comments, history, time logs) with filtering.
-- **My Issues** — cross-project view of issues assigned to or delegated to you.
+  branches** from connected Git providers (GitHub, GitLab, Gitea, Forgejo, Bitbucket), plus
+  tappable image previews with a pinch-to-zoom full-screen viewer.
+- **Activity & comments** — threaded comments with replies, emoji reactions, edit/delete,
+  autosaved drafts, and a combined activity feed (comments, history, time logs) with filtering.
+- **My Issues** — cross-project view of issues assigned to or delegated to you, plus a home-screen
+  widget showing your open issues.
+- **Global search** — search issues across all accessible projects from the Board tab.
 - **Inbox** — notifications (assignments, mentions, comments, state changes, reactions) with
-  read/unread, snooze, and type filtering.
+  read/unread, snooze, and type filtering. Comment notifications deep-link to and highlight the
+  relevant comment.
 - **Cycles** — sprint-style time-boxed iterations: create, view progress, finish, start the next
   cycle, and transfer unfinished issues.
-- **Docs** — browse a project's document tree, read rendered Markdown, and create/edit pages.
+- **Docs** — browse a project's document tree, read rendered Markdown, and create/edit pages with
+  autosaved drafts.
+- **Sharing** — share issue/document links or open them in a browser.
 - **Live sync** — lightweight polling against the server's revision endpoint to refresh the
   board and inbox when something changes elsewhere, without a heavy real-time connection.
 - **Responsive layout** — single-pane navigation bar on compact widths (phones, folded cover

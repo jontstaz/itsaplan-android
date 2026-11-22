@@ -77,6 +77,7 @@ fun InboxScreen(
     viewModel: InboxViewModel,
     onUnreadChanged: () -> Unit,
     onOpenIssue: (issueId: Int, projectRef: String?) -> Unit,
+    onOpenComment: (issueId: Int, projectRef: String?, commentId: Int) -> Unit,
     onShowMessage: (String) -> Unit
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -181,7 +182,11 @@ fun InboxScreen(
                             item = item,
                             onClick = {
                                 if (!item.isRead) viewModel.toggleRead(item, onUnreadChanged)
-                                item.issueId?.let { id -> onOpenIssue(id, null) }
+                                item.issueId?.let { id ->
+                                    val commentId = item.issueCommentId
+                                    if (commentId != null) onOpenComment(id, item.projectKey.ifBlank { null }, commentId)
+                                    else onOpenIssue(id, item.projectKey.ifBlank { null })
+                                }
                             },
                             onToggleRead = { viewModel.toggleRead(item, onUnreadChanged) },
                             onSnooze = { snoozeTarget = item },

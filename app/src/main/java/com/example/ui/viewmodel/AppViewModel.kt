@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.data.local.StoredConnection
 import com.example.data.model.BoardIssueDto
 import com.example.data.model.CurrentUserDto
+import com.example.data.model.CrossProjectIssueHitDto
 import com.example.data.model.CycleDto
 import com.example.data.model.IssueResponseDto
 import com.example.data.model.ProjectBoardResponse
@@ -74,7 +75,9 @@ data class AppUiState(
     val boardError: String? = null,
     val unreadNotifications: Int = 0,
     val snackbarMessage: String? = null,
-    val lastSyncedAtMs: Long = 0L
+    val lastSyncedAtMs: Long = 0L,
+    val globalSearchResults: List<CrossProjectIssueHitDto> = emptyList(),
+    val isGlobalSearching: Boolean = false
 )
 
 class AppViewModel(
@@ -85,6 +88,7 @@ class AppViewModel(
     val uiState: StateFlow<AppUiState> = _uiState.asStateFlow()
 
     private var syncJob: Job? = null
+    private var globalSearchJob: Job? = null
     private var lastRevs: Map<String, String> = emptyMap()
 
     init {
@@ -490,6 +494,31 @@ class AppViewModel(
             repository.saveLiveSyncEnabled(enabled)
             if (enabled) startSyncLoop() else syncJob?.cancel()
         }
+    }
+
+    fun searchGlobally(query: String) {
+        globalSearchJob?.cancel()
+        if (query.trim().length < 2) {
+            _uiState.update { it.copy(globalSearchResults = emptyList(), isGlobalSearching = false) }
+            return
+        }
+        globalSearchJob = viewModelScope.launch {
+            _uiState.update { it.copy(isGlobalSearching = true) }
+            delay(300)
+            repository.searchCrossProjectIssues(query.trim()).fold(
+                onSuccess = { results ->
+                    _uiState.update { it.copy(globalSearchResults = results, isGlobalSearching = false) }
+                },
+                onFailure = { error ->
+                    _uiState.update { it.copy(isGlobalSearching = false, snackbarMessage = error.message ?: "Search failed") }
+                }
+            )
+        }
+    }
+
+    fun clearGlobalSearch() {
+        globalSearchJob?.cancel()
+        _uiState.update { it.copy(globalSearchResults = emptyList(), isGlobalSearching = false) }
     }
 
     fun showSnackbar(message: String) {

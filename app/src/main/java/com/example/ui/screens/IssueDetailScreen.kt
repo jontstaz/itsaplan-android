@@ -7,7 +7,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -93,6 +95,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import com.example.data.model.AgentRunDto
 import com.example.data.model.AttachmentDto
 import com.example.data.model.CurrentUserDto
@@ -132,11 +136,20 @@ fun IssueDetailScreen(
     onBoardDirty: () -> Unit,
     isFullscreen: Boolean = false,
     onToggleFullscreen: (() -> Unit)? = null,
-    serverBaseUrl: String = ""
+    serverBaseUrl: String = "",
+    targetCommentId: Int? = null
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    var highlightedCommentId by remember(targetCommentId) { mutableStateOf(targetCommentId) }
+
+    LaunchedEffect(targetCommentId, state.feedItems) {
+        if (targetCommentId != null && state.feedItems.any { it.id == targetCommentId }) {
+            kotlinx.coroutines.delay(3500)
+            highlightedCommentId = null
+        }
+    }
 
     BackHandler(onBack = onBack)
 
@@ -595,6 +608,8 @@ fun IssueDetailScreen(
                                 counts = state.feedCounts,
                                 selectedFilter = state.feedFilter,
                                 currentUserId = currentUser.id,
+                                highlightedCommentId = highlightedCommentId,
+                                targetCommentId = targetCommentId,
                                 hasMore = state.feedNextCursor != null,
                                 onSelectFilter = { viewModel.selectFeedFilter(it) },
                                 onLoadMore = { viewModel.loadMoreFeed() },
@@ -1046,6 +1061,7 @@ private fun AttachmentsCard(
     onOpenAttachment: (String) -> Unit,
     onDeleteAttachment: (String) -> Unit
 ) {
+    var previewImageUrl by remember { mutableStateOf<String?>(null) }
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -1099,8 +1115,9 @@ private fun AttachmentsCard(
                                     contentDescription = att.filename,
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier
-                                        .size(44.dp)
+                                        .size(88.dp)
                                         .clip(RoundedCornerShape(8.dp))
+                                        .clickable { previewImageUrl = url }
                                 )
                             } else {
                                 Surface(
@@ -1129,6 +1146,59 @@ private fun AttachmentsCard(
                         }
                     }
                 }
+            }
+        }
+    }
+
+    if (previewImageUrl != null) {
+        ImageAttachmentViewer(
+            url = previewImageUrl!!,
+            onDismiss = { previewImageUrl = null }
+        )
+    }
+}
+
+@Composable
+private fun ImageAttachmentViewer(url: String, onDismiss: () -> Unit) {
+    var scale by remember { mutableStateOf(1f) }
+    var offset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(androidx.compose.ui.graphics.Color.Black),
+            contentAlignment = Alignment.Center
+        ) {
+            AsyncImage(
+                model = url,
+                contentDescription = "Attachment preview",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectTransformGestures { _, pan, zoom, _ ->
+                            scale = (scale * zoom).coerceIn(1f, 5f)
+                            offset = if (scale > 1f) offset + pan else androidx.compose.ui.geometry.Offset.Zero
+                        }
+                    }
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = offset.x
+                        translationY = offset.y
+                    }
+            )
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+                    .testTag("image_viewer_close")
+            ) {
+                Icon(Icons.Rounded.Close, contentDescription = "Close preview", tint = androidx.compose.ui.graphics.Color.White)
             }
         }
     }

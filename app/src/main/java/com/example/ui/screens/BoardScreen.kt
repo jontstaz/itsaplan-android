@@ -38,6 +38,7 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SmartToy
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarOutline
+import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.ViewKanban
 import androidx.compose.material3.Badge
@@ -63,6 +64,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -101,7 +103,9 @@ fun BoardScreen(
     onOpenIssue: (Int) -> Unit,
     onQuickCreateInColumn: (Int) -> Unit,
     onMoveIssue: (BoardIssueDto, Int) -> Unit,
-    forceListView: Boolean = false
+    forceListView: Boolean = false,
+    recentIssues: List<com.example.data.local.RecentIssue> = emptyList(),
+    onOpenGlobalSearch: () -> Unit = {}
 ) {
     var moveTargetIssue by remember { mutableStateOf<BoardIssueDto?>(null) }
     var showSearchBar by remember { mutableStateOf(false) }
@@ -218,6 +222,16 @@ fun BoardScreen(
                     }
 
                     IconButton(
+                        onClick = onOpenGlobalSearch,
+                        modifier = Modifier.testTag("global_search_toggle")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.TravelExplore,
+                            contentDescription = "Search all projects"
+                        )
+                    }
+
+                    IconButton(
                         onClick = { showSearchBar = !showSearchBar },
                         modifier = Modifier.testTag("board_search_toggle")
                     ) {
@@ -294,6 +308,45 @@ fun BoardScreen(
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                             .testTag("board_search_input")
                     )
+                }
+
+                // Recent Issues Strip
+                if (recentIssues.isNotEmpty()) {
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(recentIssues.take(5), key = { it.id }) { recent ->
+                            Surface(
+                                onClick = { onOpenIssue(recent.id) },
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                modifier = Modifier.testTag("recent_issue_${recent.id}")
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        text = recent.identifier,
+                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                    if (recent.title.isNotBlank()) {
+                                        Text(
+                                            text = recent.title,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.widthIn(max = 140.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
                 // Active Filter Chips
