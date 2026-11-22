@@ -63,7 +63,8 @@ fun DocsScreen(
     selectedProject: ProjectListItem?,
     viewModel: DocsViewModel,
     onShowMessage: (String) -> Unit,
-    twoPane: Boolean = false
+    twoPane: Boolean = false,
+    serverBaseUrl: String = ""
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showCreateDialog by remember { mutableStateOf(false) }
@@ -84,7 +85,8 @@ fun DocsScreen(
     if (state.activeDocument != null && !twoPane) {
         DocumentDetailScreen(
             viewModel = viewModel,
-            onBack = { viewModel.closeDocument() }
+            onBack = { viewModel.closeDocument() },
+            serverBaseUrl = serverBaseUrl
         )
         return
     }
@@ -201,7 +203,8 @@ fun DocsScreen(
                             if (state.activeDocument != null) {
                                 DocumentDetailScreen(
                                     viewModel = viewModel,
-                                    onBack = { viewModel.closeDocument() }
+                                    onBack = { viewModel.closeDocument() },
+                                    serverBaseUrl = serverBaseUrl
                                 )
                             } else {
                                 EmptyStateView(

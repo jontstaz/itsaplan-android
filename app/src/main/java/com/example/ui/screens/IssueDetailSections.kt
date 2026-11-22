@@ -57,6 +57,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -512,11 +513,21 @@ fun CommentComposerBar(
     onCancelReply: () -> Unit,
     assignees: List<AssigneeCandidateDto>,
     isSubmitting: Boolean,
+    issueId: Int,
+    draftStore: com.example.data.local.DraftStore,
     onSend: (String) -> Unit
 ) {
     var text by remember { mutableStateOf("") }
     var showMentions by remember { mutableStateOf(false) }
     var showPreview by remember { mutableStateOf(false) }
+
+    LaunchedEffect(issueId) {
+        text = draftStore.loadCommentDraft(issueId)
+    }
+
+    LaunchedEffect(text, issueId) {
+        draftStore.saveCommentDraft(issueId, text)
+    }
 
     Surface(
         tonalElevation = 4.dp,

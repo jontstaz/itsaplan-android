@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
             clientManager = apiClientManager
         )
 
-        val vmFactory = AppViewModelFactory(repository)
+        val vmFactory = AppViewModelFactory(repository, applicationContext)
 
         setContent {
             val windowSizeClass = calculateWindowSizeClass(this)
@@ -132,7 +132,8 @@ private fun SplashLoadingView() {
 }
 
 private class AppViewModelFactory(
-    private val repository: ItsAPlanRepository
+    private val repository: ItsAPlanRepository,
+    private val context: android.content.Context
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -141,7 +142,7 @@ private class AppViewModelFactory(
             modelClass.isAssignableFrom(IssueDetailViewModel::class.java) -> IssueDetailViewModel(repository) as T
             modelClass.isAssignableFrom(InboxViewModel::class.java) -> InboxViewModel(repository) as T
             modelClass.isAssignableFrom(CyclesViewModel::class.java) -> CyclesViewModel(repository) as T
-            modelClass.isAssignableFrom(MyIssuesViewModel::class.java) -> MyIssuesViewModel(repository) as T
+            modelClass.isAssignableFrom(MyIssuesViewModel::class.java) -> MyIssuesViewModel(repository, context.applicationContext as android.app.Application) as T
             modelClass.isAssignableFrom(DocsViewModel::class.java) -> DocsViewModel(repository) as T
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }

@@ -155,7 +155,8 @@ fun MainShell(
                 appViewModel.refreshBoard(silent = true)
             },
             isFullscreen = true,
-            onToggleFullscreen = if (windowSize.supportsListDetail && showsIssueList) ({ issueFullscreen = false }) else null
+            onToggleFullscreen = if (windowSize.supportsListDetail && showsIssueList) ({ issueFullscreen = false }) else null,
+            serverBaseUrl = appState.connection.serverUrl
         )
         return
     }
@@ -269,7 +270,8 @@ fun MainShell(
                                     onNavigateToIssue = { nextId -> issueStack.add(OpenIssueEntry(nextId, activeIssue.projectRef)) },
                                     onBoardDirty = { appViewModel.refreshBoard(silent = true) },
                                     isFullscreen = false,
-                                    onToggleFullscreen = { issueFullscreen = true }
+                                    onToggleFullscreen = { issueFullscreen = true },
+                                    serverBaseUrl = appState.connection.serverUrl
                                 )
                             }
                         )
@@ -427,7 +429,8 @@ private fun MainTabContent(
                 selectedProject = appState.selectedProject,
                 viewModel = docsViewModel,
                 onShowMessage = { appViewModel.showSnackbar(it) },
-                twoPane = windowSize.supportsListDetail
+                twoPane = windowSize.supportsListDetail,
+                serverBaseUrl = appState.connection.serverUrl
             )
         }
 

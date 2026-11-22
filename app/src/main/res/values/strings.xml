@@ -14,4 +14,5 @@
     <string name="search_issues_hint">Search issues across projects…</string>
     <string name="sign_out">Sign Out</string>
     <string name="http_warning">Unencrypted HTTP connection — use HTTPS for production deployments.</string>
+    <string name="my_issues_widget_description">Open issues assigned to you</string>
 </resources>

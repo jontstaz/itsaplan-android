@@ -117,6 +117,8 @@ dependencies {
   implementation("io.noties.markwon:html:4.6.2")
   implementation("io.noties.markwon:linkify:4.6.2")
   implementation("com.github.jeziellago:Markwon:58aa5aba6a") // Coil images plugin
+  implementation(libs.androidx.glance)
+  implementation(libs.androidx.glance.material3)
   implementation(libs.converter.moshi)
   // implementation(libs.firebase.ai)
   // Uncomment to use Firestore:

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.model.CrossProjectIssueHitDto
 import com.example.data.repository.ItsAPlanRepository
+import androidx.glance.appwidget.updateAll
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,7 +31,8 @@ data class MyIssuesUiState(
 )
 
 class MyIssuesViewModel(
-    private val repository: ItsAPlanRepository
+    private val repository: ItsAPlanRepository,
+    private val application: android.app.Application
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MyIssuesUiState())
@@ -64,6 +66,13 @@ class MyIssuesViewModel(
             ).fold(
                 onSuccess = { list ->
                     _uiState.update { it.copy(issues = list, isLoading = false, error = null) }
+                    // Refresh the home-screen widget cache.
+                    launch {
+                        com.example.data.local.WidgetCache(application).saveMyIssues(
+                            list.map { com.example.data.local.WidgetIssue(it.id, it.identifier, it.title) }
+                        )
+                        com.example.widget.MyIssuesWidget().updateAll(application)
+                    }
                 },
                 onFailure = { err ->
                     _uiState.update {

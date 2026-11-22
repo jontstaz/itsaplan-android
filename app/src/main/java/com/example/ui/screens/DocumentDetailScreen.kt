@@ -19,6 +19,8 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,7 +40,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.platform.testTag
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -52,7 +57,8 @@ import com.example.ui.components.ThemedMarkdownText
 @Composable
 fun DocumentDetailScreen(
     viewModel: DocsViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    serverBaseUrl: String = ""
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val doc = state.activeDocument
@@ -65,6 +71,27 @@ fun DocumentDetailScreen(
     var editedTitle by remember(doc?.id) { mutableStateOf(doc?.title.orEmpty()) }
     var editedContent by remember(doc?.id) { mutableStateOf(doc?.content.orEmpty()) }
     var showArchiveConfirm by remember { mutableStateOf(false) }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val draftStore = remember { com.example.data.local.DraftStore(context.applicationContext) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+
+    // Restore draft content when entering edit mode on a doc that has a saved draft.
+    LaunchedEffect(doc?.id, isEditing) {
+        val id = doc?.id ?: return@LaunchedEffect
+        if (isEditing) {
+            val draft = draftStore.loadDocDraft(id)
+            if (draft.isNotBlank()) editedContent = draft
+        }
+    }
+
+    // Persist draft while editing.
+    LaunchedEffect(editedContent, isEditing, doc?.id) {
+        val id = doc?.id ?: return@LaunchedEffect
+        if (isEditing) {
+            draftStore.saveDocDraft(id, editedContent)
+        }
+    }
 
     // Keep edit buffers in sync whenever a fresh document loads (e.g. after save).
     LaunchedEffect(doc?.version) {
@@ -90,11 +117,41 @@ fun DocumentDetailScreen(
                     )
                 },
                 actions = {
+                    if (doc != null) {
+                        IconButton(
+                            onClick = {
+                                val webUrl = serverBaseUrl.trimEnd('/') + "/docs/" + doc.id
+                                val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(android.content.Intent.EXTRA_TEXT, webUrl)
+                                }
+                                context.startActivity(android.content.Intent.createChooser(send, "Share document"))
+                            },
+                            modifier = Modifier.testTag("doc_share_button")
+                        ) {
+                            Icon(Icons.Rounded.Share, contentDescription = "Share document")
+                        }
+                        IconButton(
+                            onClick = {
+                                val webUrl = serverBaseUrl.trimEnd('/') + "/docs/" + doc.id
+                                val open = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(webUrl))
+                                context.startActivity(open)
+                            },
+                            modifier = Modifier.testTag("doc_open_browser_button")
+                        ) {
+                            Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = "Open in browser")
+                        }
+                    }
                     if (doc != null && !doc.isLocked) {
                         if (isEditing) {
                             IconButton(
                                 onClick = {
                                     viewModel.saveDocument(editedTitle, editedContent)
+                                    doc.id.let { id ->
+                                        scope.launch {
+                                            draftStore.saveDocDraft(id, "")
+                                        }
+                                    }
                                     isEditing = false
                                 },
                                 enabled = !state.isSaving

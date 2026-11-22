@@ -39,6 +39,8 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.FullscreenExit
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.MoreVert
@@ -129,7 +131,8 @@ fun IssueDetailScreen(
     onNavigateToIssue: (Int) -> Unit,
     onBoardDirty: () -> Unit,
     isFullscreen: Boolean = false,
-    onToggleFullscreen: (() -> Unit)? = null
+    onToggleFullscreen: (() -> Unit)? = null,
+    serverBaseUrl: String = ""
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -230,6 +233,29 @@ fun IssueDetailScreen(
                     }
                     if (issue != null) {
                         IconButton(
+                            onClick = {
+                                val webUrl = serverBaseUrl.trimEnd('/') + "/" + (knownProjectRef ?: "") + "/issues/" + issue.identifier
+                                val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(android.content.Intent.EXTRA_TEXT, webUrl)
+                                }
+                                context.startActivity(android.content.Intent.createChooser(send, "Share issue"))
+                            },
+                            modifier = Modifier.testTag("issue_share_button")
+                        ) {
+                            Icon(Icons.Rounded.Share, contentDescription = "Share issue")
+                        }
+                        IconButton(
+                            onClick = {
+                                val webUrl = serverBaseUrl.trimEnd('/') + "/" + (knownProjectRef ?: "") + "/issues/" + issue.identifier
+                                val open = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(webUrl))
+                                context.startActivity(open)
+                            },
+                            modifier = Modifier.testTag("issue_open_browser_button")
+                        ) {
+                            Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = "Open in browser")
+                        }
+                        IconButton(
                             onClick = { viewModel.toggleWatch(isWatching) },
                             modifier = Modifier.testTag("issue_watch_button")
                         ) {
@@ -284,6 +310,8 @@ fun IssueDetailScreen(
                     onCancelReply = { replyToCommentId = null; replyToPreview = null },
                     assignees = scaffold?.assignees.orEmpty(),
                     isSubmitting = state.isMutating,
+                    issueId = issueId,
+                    draftStore = remember { com.example.data.local.DraftStore(context.applicationContext) },
                     onSend = { body ->
                         viewModel.postComment(body, replyToCommentId) {
                             replyToCommentId = null
