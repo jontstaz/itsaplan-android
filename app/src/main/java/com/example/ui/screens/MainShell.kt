@@ -204,7 +204,14 @@ fun MainShell(
                                         unreadCount = appState.unreadNotifications
                                     )
                                 },
-                                label = { Text(tab.label, maxLines = 1) },
+                                label = {
+                                    Text(
+                                        text = if (tab == MainTab.MY_ISSUES) "My" else tab.label,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                },
                                 modifier = Modifier.testTag(tab.testTag)
                             )
                         }

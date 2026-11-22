@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -25,26 +26,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.FormatListBulleted
 import androidx.compose.material.icons.rounded.AccountTree
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.FilterList
 import androidx.compose.material.icons.rounded.FolderOpen
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SmartToy
-import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material.icons.rounded.StarOutline
-import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.material.icons.rounded.SwapHoriz
-import androidx.compose.material.icons.rounded.ViewKanban
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -91,7 +82,6 @@ import com.example.ui.components.formatShortDate
 import com.example.ui.components.priorityLabel
 import com.example.ui.components.stateTypeColor
 import com.example.ui.components.stateTypeIcon
-import com.example.ui.theme.Amber500
 import com.example.ui.theme.Coral500
 import com.example.ui.theme.MonoCodeStyle
 import com.example.ui.theme.Violet500
@@ -159,7 +149,8 @@ fun BoardScreen(
         filteredIssues.groupBy { it.columnId }.mapValues { (_, list) -> list.sortedBy { it.position } }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val kanbanLaneWidth = (maxWidth - 32.dp).coerceIn(260.dp, 304.dp)
         Column(modifier = Modifier.fillMaxSize()) {
         // Top Project Header Bar
         Surface(
@@ -167,148 +158,18 @@ fun BoardScreen(
             tonalElevation = 1.dp
         ) {
             Column {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Project Switcher Pill
-                    Surface(
-                        onClick = onOpenProjectSwitcher,
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
-                        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary),
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("project_switcher_button")
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            if (selectedProject != null) {
-                                Surface(
-                                    shape = RoundedCornerShape(6.dp),
-                                    color = MaterialTheme.colorScheme.primaryContainer
-                                ) {
-                                    Text(
-                                        text = selectedProject.key,
-                                        style = MonoCodeStyle.copy(fontWeight = FontWeight.Bold),
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
-                                }
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = selectedProject.name,
-                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        text = if (selectedProject.teamName.isNotBlank()) "Active · ${selectedProject.teamName}" else "Active project",
-                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                                        color = MaterialTheme.colorScheme.primary,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            } else {
-                                Text(
-                                    text = "Choose Active Project",
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                            Icon(
-                                imageVector = Icons.Rounded.KeyboardArrowDown,
-                                contentDescription = "Switch project",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-
-                    if (selectedProject != null) {
-                        IconButton(
-                            onClick = onToggleFavorite,
-                            modifier = Modifier.testTag("favorite_project_button")
-                        ) {
-                            Icon(
-                                imageVector = if (selectedProject.isFavorite) Icons.Rounded.Star else Icons.Rounded.StarOutline,
-                                contentDescription = if (selectedProject.isFavorite) "Remove favorite" else "Favorite project",
-                                tint = if (selectedProject.isFavorite) Amber500 else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    IconButton(
-                        onClick = onOpenGlobalSearch,
-                        modifier = Modifier.testTag("global_search_toggle")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.TravelExplore,
-                            contentDescription = "Search all projects"
-                        )
-                    }
-
-                    IconButton(
-                        onClick = { showSearchBar = !showSearchBar },
-                        modifier = Modifier.testTag("board_search_toggle")
-                    ) {
-                        Icon(
-                            imageVector = if (showSearchBar) Icons.Rounded.Close else Icons.Rounded.Search,
-                            contentDescription = "Search board"
-                        )
-                    }
-
-                    IconButton(
-                        onClick = {
-                            onSetViewMode(
-                                if (state.boardViewMode == BoardViewMode.KANBAN) BoardViewMode.LIST else BoardViewMode.KANBAN
-                            )
-                        },
-                        modifier = Modifier.testTag("board_view_mode_toggle")
-                    ) {
-                        Icon(
-                            imageVector = if (state.boardViewMode == BoardViewMode.KANBAN) {
-                                Icons.AutoMirrored.Rounded.FormatListBulleted
-                            } else {
-                                Icons.Rounded.ViewKanban
-                            },
-                            contentDescription = "Toggle Kanban or List view"
-                        )
-                    }
-
-                    IconButton(
-                        onClick = onOpenFilterSheet,
-                        modifier = Modifier.testTag("board_filter_button")
-                    ) {
-                        BadgedBox(
-                            badge = {
-                                if (state.boardFilters.activeCount > 0) {
-                                    Badge { Text("${state.boardFilters.activeCount}") }
-                                }
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.FilterList,
-                                contentDescription = "Filter issues"
-                            )
-                        }
-                    }
-
-                    IconButton(
-                        onClick = onRefresh,
-                        modifier = Modifier.testTag("board_refresh_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Refresh,
-                            contentDescription = "Refresh board"
-                        )
-                    }
-                }
+                BoardHeaderContent(
+                    state = state,
+                    selectedProject = selectedProject,
+                    showSearchBar = showSearchBar,
+                    onOpenProjectSwitcher = onOpenProjectSwitcher,
+                    onToggleFavorite = onToggleFavorite,
+                    onOpenGlobalSearch = onOpenGlobalSearch,
+                    onToggleSearch = { showSearchBar = !showSearchBar },
+                    onSetViewMode = onSetViewMode,
+                    onOpenFilterSheet = onOpenFilterSheet,
+                    onRefresh = onRefresh
+                )
 
                 // Inline Search Bar
                 if (showSearchBar) {
@@ -536,7 +397,8 @@ fun BoardScreen(
                             isDropTarget = dragController.targetColumnId == column.id &&
                                 dragController.draggedIssue?.columnId != column.id,
                             onBoundsChanged = { dragController.updateColumnBounds(column.id, it) },
-                            dragModifierFor = dragController::cardDragModifier
+                            dragModifierFor = dragController::cardDragModifier,
+                            laneWidth = kanbanLaneWidth
                         )
                     }
                 }
@@ -617,11 +479,12 @@ private fun KanbanColumnLane(
     onRequestMove: (BoardIssueDto) -> Unit,
     isDropTarget: Boolean,
     onBoundsChanged: (androidx.compose.ui.layout.LayoutCoordinates) -> Unit,
-    dragModifierFor: (BoardIssueDto) -> Modifier
+    dragModifierFor: (BoardIssueDto) -> Modifier,
+    laneWidth: androidx.compose.ui.unit.Dp
 ) {
     Surface(
         modifier = Modifier
-            .width(304.dp)
+            .width(laneWidth)
             .fillMaxHeight()
             .onGloballyPositioned(onBoundsChanged),
         shape = RoundedCornerShape(16.dp),
