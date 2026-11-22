@@ -3,6 +3,7 @@ package com.example.ui.screens
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -55,14 +57,20 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.text.font.FontWeight
@@ -109,6 +117,20 @@ fun BoardScreen(
 ) {
     var moveTargetIssue by remember { mutableStateOf<BoardIssueDto?>(null) }
     var showSearchBar by remember { mutableStateOf(false) }
+    val currentOnMoveIssue by rememberUpdatedState(onMoveIssue)
+    val haptic = LocalHapticFeedback.current
+    val kanbanListState = rememberLazyListState()
+    val dragController = remember {
+        KanbanDragController(haptic) { issue, columnId -> currentOnMoveIssue(issue, columnId) }
+    }
+
+    LaunchedEffect(dragController.isDragging) {
+        while (dragController.isDragging) {
+            val delta = dragController.autoScrollDelta()
+            if (delta != 0f) kanbanListState.scrollBy(delta)
+            withFrameNanos { }
+        }
+    }
 
     val scaffold = state.projectBoard
     val selectedProject = state.selectedProject
@@ -137,7 +159,8 @@ fun BoardScreen(
         filteredIssues.groupBy { it.columnId }.mapValues { (_, list) -> list.sortedBy { it.position } }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
         // Top Project Header Bar
         Surface(
             color = MaterialTheme.colorScheme.surface,
@@ -493,7 +516,10 @@ fun BoardScreen(
 
             !forceListView && state.boardViewMode == BoardViewMode.KANBAN -> {
                 LazyRow(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .onGloballyPositioned { dragController.boardBounds = it.boundsInRoot() },
+                    state = kanbanListState,
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
@@ -506,7 +532,11 @@ fun BoardScreen(
                             assigneeMap = assigneeMap,
                             onQuickAdd = { onQuickCreateInColumn(column.id) },
                             onIssueClick = onOpenIssue,
-                            onRequestMove = { moveTargetIssue = it }
+                            onRequestMove = { moveTargetIssue = it },
+                            isDropTarget = dragController.targetColumnId == column.id &&
+                                dragController.draggedIssue?.columnId != column.id,
+                            onBoundsChanged = { dragController.updateColumnBounds(column.id, it) },
+                            dragModifierFor = dragController::cardDragModifier
                         )
                     }
                 }
@@ -553,6 +583,13 @@ fun BoardScreen(
                 }
             }
         }
+        }
+
+        KanbanDragOverlay(
+            controller = dragController,
+            labelMap = labelMap,
+            assigneeMap = assigneeMap
+        )
     }
 
     moveTargetIssue?.let { issue ->
@@ -577,15 +614,23 @@ private fun KanbanColumnLane(
     assigneeMap: Map<String, AssigneeCandidateDto>,
     onQuickAdd: () -> Unit,
     onIssueClick: (Int) -> Unit,
-    onRequestMove: (BoardIssueDto) -> Unit
+    onRequestMove: (BoardIssueDto) -> Unit,
+    isDropTarget: Boolean,
+    onBoundsChanged: (androidx.compose.ui.layout.LayoutCoordinates) -> Unit,
+    dragModifierFor: (BoardIssueDto) -> Modifier
 ) {
     Surface(
         modifier = Modifier
             .width(304.dp)
-            .fillMaxHeight(),
+            .fillMaxHeight()
+            .onGloballyPositioned(onBoundsChanged),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        color = if (isDropTarget) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+        else MaterialTheme.colorScheme.surfaceContainerLow,
+        border = BorderStroke(
+            if (isDropTarget) 2.dp else 1.dp,
+            if (isDropTarget) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+        )
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             ColumnHeaderRow(
@@ -622,7 +667,8 @@ private fun KanbanColumnLane(
                             labelMap = labelMap,
                             assigneeMap = assigneeMap,
                             onClick = { onIssueClick(issue.id) },
-                            onMoveClick = { onRequestMove(issue) }
+                            onMoveClick = { onRequestMove(issue) },
+                            dragModifier = dragModifierFor(issue)
                         )
                     }
                 }
@@ -689,7 +735,8 @@ fun BoardIssueCard(
     labelMap: Map<Int, LabelDto>,
     assigneeMap: Map<String, AssigneeCandidateDto>,
     onClick: () -> Unit,
-    onMoveClick: () -> Unit
+    onMoveClick: () -> Unit,
+    dragModifier: Modifier = Modifier
 ) {
     val assignee = issue.assigneeUserId?.let { assigneeMap[it] }
     val delegate = issue.delegateUserId?.let { assigneeMap[it] }
@@ -702,6 +749,7 @@ fun BoardIssueCard(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier
             .fillMaxWidth()
+            .then(dragModifier)
             .testTag("issue_card_${issue.id}")
     ) {
         Column(

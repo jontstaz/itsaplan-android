@@ -13,9 +13,9 @@ foldables (unfolded two-pane layouts on wide screens).
 
 ## Features
 
-- **Board** — Kanban and grouped-list views of a project's issues, drag-free quick move between
-  columns, filters (priority, assignee, label, cycle), search, quick issue creation, and a
-  recent-issues strip for jumping back into work.
+- **Board** — Kanban and grouped-list views of a project's issues, long-press drag-and-drop
+  between Kanban columns, a quick-move status sheet, filters (priority, assignee, label, cycle),
+  search, quick issue creation, and a recent-issues strip for jumping back into work.
 - **Issue detail** — markdown-rendered description and comments, metadata editing (status,
   priority, assignee, AI delegate, type, cycle, due date, estimates), labels, custom fields,
   checklists, subtasks, linked issues, attachments (photo/file picker), time tracking (worklogs),
