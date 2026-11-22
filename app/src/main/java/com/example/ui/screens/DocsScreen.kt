@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,12 +12,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -24,6 +29,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -31,12 +37,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,6 +54,7 @@ import com.example.data.model.DocumentSummaryDto
 import com.example.data.model.ProjectListItem
 import com.example.ui.components.EmptyStateView
 import com.example.ui.components.ErrorBanner
+import com.example.ui.layout.TwoPaneListDetail
 import com.example.ui.viewmodel.DocsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,10 +62,12 @@ import com.example.ui.viewmodel.DocsViewModel
 fun DocsScreen(
     selectedProject: ProjectListItem?,
     viewModel: DocsViewModel,
-    onShowMessage: (String) -> Unit
+    onShowMessage: (String) -> Unit,
+    twoPane: Boolean = false
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showCreateDialog by remember { mutableStateOf(false) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
 
     LaunchedEffect(selectedProject?.routeKey) {
         selectedProject?.let { viewModel.loadDocuments(it.routeKey) }
@@ -69,7 +80,8 @@ fun DocsScreen(
         }
     }
 
-    if (state.activeDocument != null) {
+    // Compact: opening a doc replaces the list (single-pane navigation).
+    if (state.activeDocument != null && !twoPane) {
         DocumentDetailScreen(
             viewModel = viewModel,
             onBack = { viewModel.closeDocument() }
@@ -79,7 +91,21 @@ fun DocsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Docs") })
+            TopAppBar(
+                title = { Text("Docs") },
+                actions = {
+                    if (selectedProject != null) {
+                        IconButton(onClick = {
+                            viewModel.loadDocuments(selectedProject.routeKey)
+                        }) {
+                            Icon(
+                                imageVector = Icons.Rounded.Refresh,
+                                contentDescription = "Refresh docs"
+                            )
+                        }
+                    }
+                }
+            )
         },
         floatingActionButton = {
             if (selectedProject != null) {
@@ -89,7 +115,37 @@ fun DocsScreen(
             }
         }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+        androidx.compose.foundation.layout.Column(
+            modifier = Modifier.fillMaxSize().padding(padding)
+        ) {
+            if (selectedProject != null && state.documents.isNotEmpty()) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Search docs…") },
+                    singleLine = true,
+                    leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Rounded.Close, contentDescription = "Clear search")
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+
+            val q = searchQuery.trim().lowercase()
+            val visibleDocs = if (q.isEmpty()) state.documents
+            else state.documents.filter { it.title.lowercase().contains(q) }
+
+            val isRefreshing = state.isLoadingList
+            val onRefresh: () -> Unit = { selectedProject?.let { viewModel.loadDocuments(it.routeKey) } }
+
+            Box(modifier = Modifier.fillMaxSize()) {
             when {
                 selectedProject == null -> {
                     EmptyStateView(
@@ -124,32 +180,54 @@ fun DocsScreen(
                     )
                 }
 
-                else -> {
-                    val topLevel = state.documents.filter { it.parentId == null }
-                    val childrenOf = state.documents.groupBy { it.parentId }
-                    LazyColumn(
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        topLevel.forEach { parent ->
-                            item(key = parent.id) {
-                                DocumentRow(
-                                    doc = parent,
-                                    depth = 0,
-                                    onClick = { viewModel.openDocument(parent.id) }
+                twoPane -> {
+                    val activeDocId = state.activeDocument?.id
+                    TwoPaneListDetail(
+                        listPaneWidth = 280.dp,
+                        listPane = {
+                            PullToRefreshBox(
+                                isRefreshing = isRefreshing,
+                                onRefresh = onRefresh,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                DocumentList(
+                                    documents = visibleDocs,
+                                    activeDocId = activeDocId,
+                                    onOpen = { viewModel.openDocument(it) }
                                 )
                             }
-                            val kids = childrenOf[parent.id].orEmpty()
-                            items(kids, key = { it.id }) { child ->
-                                DocumentRow(
-                                    doc = child,
-                                    depth = 1,
-                                    onClick = { viewModel.openDocument(child.id) }
+                        },
+                        detailPane = {
+                            if (state.activeDocument != null) {
+                                DocumentDetailScreen(
+                                    viewModel = viewModel,
+                                    onBack = { viewModel.closeDocument() }
+                                )
+                            } else {
+                                EmptyStateView(
+                                    icon = Icons.Rounded.Description,
+                                    title = "Select a document",
+                                    subtitle = "Pick a doc from the list to read or edit it here."
                                 )
                             }
                         }
+                    )
+                }
+
+                else -> {
+                    PullToRefreshBox(
+                        isRefreshing = isRefreshing,
+                        onRefresh = onRefresh,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        DocumentList(
+                            documents = visibleDocs,
+                            activeDocId = null,
+                            onOpen = { viewModel.openDocument(it) }
+                        )
                     }
                 }
+            }
             }
         }
     }
@@ -185,17 +263,57 @@ fun DocsScreen(
 }
 
 @Composable
+private fun DocumentList(
+    documents: List<DocumentSummaryDto>,
+    activeDocId: Int?,
+    onOpen: (Int) -> Unit
+) {
+    val topLevel = documents.filter { it.parentId == null }
+    val childrenOf = documents.groupBy { it.parentId }
+    LazyColumn(
+        state = rememberSaveable(saver = LazyListState.Saver) { LazyListState() },
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        topLevel.forEach { parent ->
+            item(key = parent.id) {
+                DocumentRow(
+                    doc = parent,
+                    depth = 0,
+                    isSelected = parent.id == activeDocId,
+                    onClick = { onOpen(parent.id) }
+                )
+            }
+            val kids = childrenOf[parent.id].orEmpty()
+            items(kids, key = { it.id }) { child ->
+                DocumentRow(
+                    doc = child,
+                    depth = 1,
+                    isSelected = child.id == activeDocId,
+                    onClick = { onOpen(child.id) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun DocumentRow(
     doc: DocumentSummaryDto,
     depth: Int,
+    isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val bg = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
+    val borderColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier = Modifier.fillMaxWidth().padding(start = (depth * 20).dp)
+        color = bg,
+        border = BorderStroke(1.dp, borderColor),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = (depth * 20).dp)
     ) {
         Row(
             modifier = Modifier.padding(12.dp),

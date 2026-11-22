@@ -78,6 +78,24 @@ private data class OpenIssueEntry(
     val projectRef: String?
 )
 
+private val OpenIssueStackSaver = androidx.compose.runtime.saveable.Saver<
+    androidx.compose.runtime.snapshots.SnapshotStateList<OpenIssueEntry>,
+    ArrayList<Any?>
+>(
+    save = { list ->
+        ArrayList(list.flatMap { listOf<Any?>(it.issueId, it.projectRef) })
+    },
+    restore = { flat ->
+        val restored = androidx.compose.runtime.mutableStateListOf<OpenIssueEntry>()
+        var i = 0
+        while (i + 1 < flat.size) {
+            restored.add(OpenIssueEntry(flat[i] as Int, flat[i + 1] as String?))
+            i += 2
+        }
+        restored
+    }
+)
+
 @Composable
 fun MainShell(
     user: CurrentUserDto,
@@ -91,7 +109,7 @@ fun MainShell(
     windowSize: AppWindowSize = AppWindowSize.COMPACT
 ) {
     var currentTab by rememberSaveable { mutableStateOf(MainTab.BOARD) }
-    val issueStack = remember { mutableStateListOf<OpenIssueEntry>() }
+    val issueStack = rememberSaveable(saver = OpenIssueStackSaver) { mutableStateListOf<OpenIssueEntry>() }
     var issueFullscreen by rememberSaveable { mutableStateOf(false) }
 
     var showProjectSwitcher by remember { mutableStateOf(false) }
@@ -226,6 +244,7 @@ fun MainShell(
                                     inboxViewModel = inboxViewModel,
                                     cyclesViewModel = cyclesViewModel,
                                     docsViewModel = docsViewModel,
+                                    windowSize = windowSize,
                                     onOpenIssue = { id, projRef -> issueStack.add(OpenIssueEntry(id, projRef)) },
                                     onOpenProjectSwitcher = { showProjectSwitcher = true },
                                     onOpenFilterSheet = { showFilterSheet = true },
@@ -264,6 +283,7 @@ fun MainShell(
                             inboxViewModel = inboxViewModel,
                             cyclesViewModel = cyclesViewModel,
                             docsViewModel = docsViewModel,
+                            windowSize = windowSize,
                             onOpenIssue = { id, projRef -> issueStack.add(OpenIssueEntry(id, projRef)) },
                             onOpenProjectSwitcher = { showProjectSwitcher = true },
                             onOpenFilterSheet = { showFilterSheet = true },
@@ -343,6 +363,7 @@ private fun MainTabContent(
     inboxViewModel: InboxViewModel,
     cyclesViewModel: CyclesViewModel,
     docsViewModel: DocsViewModel,
+    windowSize: AppWindowSize,
     onOpenIssue: (Int, String?) -> Unit,
     onOpenProjectSwitcher: () -> Unit,
     onOpenFilterSheet: () -> Unit,
@@ -405,7 +426,8 @@ private fun MainTabContent(
             DocsScreen(
                 selectedProject = appState.selectedProject,
                 viewModel = docsViewModel,
-                onShowMessage = { appViewModel.showSnackbar(it) }
+                onShowMessage = { appViewModel.showSnackbar(it) },
+                twoPane = windowSize.supportsListDetail
             )
         }
 
