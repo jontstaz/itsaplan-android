@@ -111,7 +111,14 @@ fun ProjectSwitcherSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Projects", style = MaterialTheme.typography.titleLarge)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Switch Project", style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        "The active project controls Board, Docs, and Cycles.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 if (teams.isNotEmpty()) {
                     TextButton(
                         onClick = { showCreateDialog = true },
@@ -205,7 +212,7 @@ private fun ProjectRowItem(
         color = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
         else MaterialTheme.colorScheme.surfaceContainerLow,
         border = BorderStroke(
-            1.dp,
+            if (selected) 2.dp else 1.dp,
             if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
         )
     ) {
@@ -228,12 +235,36 @@ private fun ProjectRowItem(
                 )
             }
             Column(modifier = Modifier.weight(1f)) {
-                Text(project.name, style = MaterialTheme.typography.titleSmall)
+                Text(
+                    project.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
                 Text(
                     text = "${project.teamName} • ${project.routeKey}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+            if (selected) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    Icon(
+                        Icons.Rounded.Check,
+                        contentDescription = "Active project",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        "Active",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
             IconButton(onClick = onToggleFavorite) {
                 Icon(

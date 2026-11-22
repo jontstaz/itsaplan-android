@@ -154,7 +154,8 @@ fun BoardScreen(
                     Surface(
                         onClick = onOpenProjectSwitcher,
                         shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
+                        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary),
                         modifier = Modifier
                             .weight(1f)
                             .testTag("project_switcher_button")
@@ -179,31 +180,29 @@ fun BoardScreen(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = selectedProject.name,
-                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
-                                    if (selectedProject.teamName.isNotBlank()) {
-                                        Text(
-                                            text = selectedProject.teamName,
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
+                                    Text(
+                                        text = if (selectedProject.teamName.isNotBlank()) "Active · ${selectedProject.teamName}" else "Active project",
+                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                        color = MaterialTheme.colorScheme.primary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
                                 }
                             } else {
                                 Text(
-                                    text = "Select Project",
-                                    style = MaterialTheme.typography.titleSmall,
+                                    text = "Choose Active Project",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                     modifier = Modifier.weight(1f)
                                 )
                             }
                             Icon(
                                 imageVector = Icons.Rounded.KeyboardArrowDown,
                                 contentDescription = "Switch project",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
