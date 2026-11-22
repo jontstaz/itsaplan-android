@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -280,7 +281,8 @@ fun IssueDetailScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .imePadding()
+                .imePadding(),
+            contentAlignment = Alignment.TopCenter
         ) {
             when {
                 state.isLoading && issue == null -> {
@@ -300,7 +302,7 @@ fun IssueDetailScreen(
 
                 issue != null -> {
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize().widthIn(max = 720.dp),
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
@@ -370,10 +372,13 @@ fun IssueDetailScreen(
                                     }
 
                                     if (!issue.description.isNullOrBlank()) {
-                                        Text(
-                                            text = issue.description,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurface
+                                        dev.jeziellago.compose.markdowntext.MarkdownText(
+                                            markdown = issue.description,
+                                            style = MaterialTheme.typography.bodyMedium.copy(
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            ),
+                                            linkColor = MaterialTheme.colorScheme.primary,
+                                            isTextSelectable = true
                                         )
                                     } else {
                                         Text(
@@ -520,6 +525,20 @@ fun IssueDetailScreen(
                         if (state.agentRuns.isNotEmpty()) {
                             item(key = "agent_runs") {
                                 AgentRunsCard(runs = state.agentRuns)
+                            }
+                        }
+
+                        // Development (linked pull requests / branches)
+                        if (issue.development.isNotEmpty()) {
+                            item(key = "development") {
+                                DevelopmentCard(
+                                    links = issue.development,
+                                    onOpenLink = { url ->
+                                        runCatching {
+                                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                        }
+                                    }
+                                )
                             }
                         }
 

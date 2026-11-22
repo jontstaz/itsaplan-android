@@ -25,11 +25,15 @@ import androidx.compose.material.icons.automirrored.rounded.Reply
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AddReaction
+import androidx.compose.material.icons.rounded.AccountTree
+import androidx.compose.material.icons.rounded.CallMerge
 import androidx.compose.material.icons.rounded.CheckBox
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -68,6 +72,7 @@ import com.example.data.model.AssigneeCandidateDto
 import com.example.data.model.ChecklistDto
 import com.example.data.model.CustomFieldDto
 import com.example.data.model.CycleDto
+import com.example.data.model.DevelopmentLinkDto
 import com.example.data.model.FeedCountsDto
 import com.example.data.model.FeedItemDto
 import com.example.data.model.IssueDetailDto
@@ -82,6 +87,10 @@ import com.example.ui.components.formatRelativeTime
 import com.example.ui.components.priorityLabel
 import com.example.ui.components.todayIsoDate
 import com.example.ui.theme.MonoCodeStyle
+import com.example.ui.theme.Amber500
+import com.example.ui.theme.Coral500
+import com.example.ui.theme.Emerald500
+import com.example.ui.theme.Violet500
 import com.example.ui.viewmodel.FeedFilter
 
 enum class MetadataPicker {
@@ -367,9 +376,13 @@ fun IssueFeedSection(
                                     }
                                 }
 
-                                Text(
-                                    text = item.body.orEmpty(),
-                                    style = MaterialTheme.typography.bodyMedium
+                                dev.jeziellago.compose.markdowntext.MarkdownText(
+                                    markdown = item.body.orEmpty(),
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    ),
+                                    linkColor = MaterialTheme.colorScheme.primary,
+                                    isTextSelectable = true
                                 )
 
                                 if (item.reactions.isNotEmpty()) {
@@ -1054,3 +1067,119 @@ fun AddWorklogDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
+
+private fun pipelineColor(status: String?): androidx.compose.ui.graphics.Color = when (status) {
+    "success" -> com.example.ui.theme.Emerald500
+    "failed" -> com.example.ui.theme.Coral500
+    "running", "pending" -> com.example.ui.theme.Amber500
+    else -> androidx.compose.ui.graphics.Color.Gray
+}
+
+@Composable
+fun DevelopmentCard(
+    links: List<DevelopmentLinkDto>,
+    onOpenLink: (String) -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(Icons.Rounded.CallMerge, contentDescription = null, modifier = Modifier.size(18.dp))
+                Text("Development (${links.size})", style = MaterialTheme.typography.titleSmall)
+            }
+            if (links.isEmpty()) {
+                Text(
+                    "No linked pull requests or branches",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                links.forEach { link ->
+                    val stateColor = when (link.state) {
+                        "merged" -> Violet500
+                        "closed" -> Coral500
+                        else -> Emerald500
+                    }
+                    Surface(
+                        onClick = { link.url?.let(onOpenLink) },
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerLow,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Icon(
+                                    if (link.isBranch) Icons.Rounded.AccountTree else Icons.Rounded.CallMerge,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = stateColor
+                                )
+                                Text(
+                                    text = link.displayTitle,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                if (link.draft) {
+                                    Surface(shape = RoundedCornerShape(6.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                                        Text("Draft", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                    }
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = stateColor.copy(alpha = 0.16f)
+                                ) {
+                                    Text(
+                                        link.state.replaceFirstChar { it.uppercase() },
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = stateColor,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                            Text(
+                                text = link.repository,
+                                style = MonoCodeStyle,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            if (!link.isBranch) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        text = "${link.sourceBranch ?: "?"} → ${link.targetBranch}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    val checkStatus = link.checkStatus ?: link.pipelineStatus
+                                    if (checkStatus != null) {
+                                        Icon(
+                                            if (checkStatus == "success") Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                                            contentDescription = "Checks: $checkStatus",
+                                            modifier = Modifier.size(14.dp),
+                                            tint = pipelineColor(checkStatus)
+                                        )
+                                        Text(
+                                            checkStatus.replaceFirstChar { it.uppercase() },
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = pipelineColor(checkStatus)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+

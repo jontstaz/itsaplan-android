@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -31,14 +33,17 @@ import com.example.ui.theme.ItsAPlanTheme
 import com.example.ui.viewmodel.AppViewModel
 import com.example.ui.viewmodel.AuthState
 import com.example.ui.viewmodel.CyclesViewModel
+import com.example.ui.viewmodel.DocsViewModel
 import com.example.ui.viewmodel.InboxViewModel
 import com.example.ui.viewmodel.IssueDetailViewModel
 import com.example.ui.viewmodel.MyIssuesViewModel
+import com.example.ui.layout.toAppWindowSize
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var repository: ItsAPlanRepository
 
+    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -54,11 +59,15 @@ class MainActivity : ComponentActivity() {
         val vmFactory = AppViewModelFactory(repository)
 
         setContent {
+            val windowSizeClass = calculateWindowSizeClass(this)
+            val appWindowSize = windowSizeClass.widthSizeClass.toAppWindowSize()
+
             val appViewModel: AppViewModel = viewModel(factory = vmFactory)
             val issueDetailViewModel: IssueDetailViewModel = viewModel(factory = vmFactory)
             val inboxViewModel: InboxViewModel = viewModel(factory = vmFactory)
             val cyclesViewModel: CyclesViewModel = viewModel(factory = vmFactory)
             val myIssuesViewModel: MyIssuesViewModel = viewModel(factory = vmFactory)
+            val docsViewModel: DocsViewModel = viewModel(factory = vmFactory)
 
             val appState by appViewModel.uiState.collectAsStateWithLifecycle()
 
@@ -89,7 +98,9 @@ class MainActivity : ComponentActivity() {
                             issueDetailViewModel = issueDetailViewModel,
                             inboxViewModel = inboxViewModel,
                             cyclesViewModel = cyclesViewModel,
-                            myIssuesViewModel = myIssuesViewModel
+                            myIssuesViewModel = myIssuesViewModel,
+                            docsViewModel = docsViewModel,
+                            windowSize = appWindowSize
                         )
                     }
                 }
@@ -131,6 +142,7 @@ private class AppViewModelFactory(
             modelClass.isAssignableFrom(InboxViewModel::class.java) -> InboxViewModel(repository) as T
             modelClass.isAssignableFrom(CyclesViewModel::class.java) -> CyclesViewModel(repository) as T
             modelClass.isAssignableFrom(MyIssuesViewModel::class.java) -> MyIssuesViewModel(repository) as T
+            modelClass.isAssignableFrom(DocsViewModel::class.java) -> DocsViewModel(repository) as T
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }
     }

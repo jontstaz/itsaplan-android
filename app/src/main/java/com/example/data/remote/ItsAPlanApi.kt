@@ -9,6 +9,8 @@ import com.example.data.model.CommentReactionDto
 import com.example.data.model.CrossProjectIssueHitDto
 import com.example.data.model.CycleDto
 import com.example.data.model.CyclePageResponse
+import com.example.data.model.DocumentDto
+import com.example.data.model.DocumentSummaryDto
 import com.example.data.model.FeedCountsDto
 import com.example.data.model.FeedItemDto
 import com.example.data.model.FeedPageResponse
@@ -416,4 +418,46 @@ interface ItsAPlanApi {
 
     @GET("sync/rev")
     suspend fun getSyncRevs(@Query("scopes") scopes: String): SyncRevResponse
+
+    // --- Documents (Docs) ---
+
+    @GET("projects/{projectKey}/documents")
+    suspend fun listDocuments(
+        @Path("projectKey", encoded = false) projectKey: String,
+        @Query("q") query: String? = null,
+        @Query("archived") archived: String? = null
+    ): List<DocumentSummaryDto>
+
+    @GET("projects/{projectKey}/documents/{documentId}")
+    suspend fun getDocument(
+        @Path("projectKey", encoded = false) projectKey: String,
+        @Path("documentId") documentId: Int
+    ): DocumentDto
+
+    @POST("projects/{projectKey}/documents")
+    suspend fun createDocument(
+        @Path("projectKey", encoded = false) projectKey: String,
+        @Body body: RequestBody
+    ): DocumentDto
+
+    @PATCH("projects/{projectKey}/documents/{documentId}")
+    suspend fun updateDocument(
+        @Path("projectKey", encoded = false) projectKey: String,
+        @Path("documentId") documentId: Int,
+        @Body body: RequestBody
+    ): DocumentDto
+
+    @POST("projects/{projectKey}/documents/{documentId}/archive")
+    suspend fun archiveDocument(
+        @Path("projectKey", encoded = false) projectKey: String,
+        @Path("documentId") documentId: Int,
+        @Body body: RequestBody
+    ): Response<ResponseBody>
+
+    @POST("projects/{projectKey}/documents/{documentId}/restore")
+    suspend fun restoreDocument(
+        @Path("projectKey", encoded = false) projectKey: String,
+        @Path("documentId") documentId: Int,
+        @Body body: RequestBody
+    ): Response<ResponseBody>
 }

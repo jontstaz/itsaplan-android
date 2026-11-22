@@ -271,6 +271,37 @@ data class IssueCycleRef(
     val status: String = "upcoming"
 )
 
+data class DevelopmentCheckDto(
+    val id: Int = 0,
+    val name: String = "",
+    val status: String = "pending",
+    val url: String? = null,
+    val updatedAt: String? = null
+)
+
+data class DevelopmentLinkDto(
+    val id: Int = 0,
+    val provider: String = "github",
+    val repository: String = "",
+    val kind: String = "pull_request",
+    val number: Int? = null,
+    val title: String = "",
+    val url: String? = null,
+    val state: String = "open",
+    val draft: Boolean = false,
+    val sourceBranch: String? = null,
+    val targetBranch: String = "",
+    val headSha: String? = null,
+    val pipelineStatus: String? = null,
+    val pipelineUrl: String? = null,
+    val checkStatus: String? = null,
+    val checks: List<DevelopmentCheckDto> = emptyList(),
+    val updatedAt: String? = null
+) {
+    val isBranch: Boolean get() = kind == "branch"
+    val displayTitle: String get() = if (number != null) "#$number $title" else title
+}
+
 data class IssueFieldValueDto(
     val fieldId: Int = 0,
     val name: String? = null,
@@ -380,7 +411,8 @@ data class IssueDetailDto(
     val parent: RelatedIssueSummary? = null,
     val subtasks: List<RelatedIssueSummary> = emptyList(),
     val ancestors: List<RelatedIssueSummary> = emptyList(),
-    val checklists: List<ChecklistDto> = emptyList()
+    val checklists: List<ChecklistDto> = emptyList(),
+    val development: List<DevelopmentLinkDto> = emptyList()
 ) {
     val effectivePriority: String get() = priority ?: "none"
 }
@@ -647,6 +679,41 @@ data class NotificationDto(
 
 data class SyncRevResponse(
     val revs: Map<String, String> = emptyMap()
+)
+
+// --- Docs ---
+
+data class DocumentSummaryDto(
+    val id: Int = 0,
+    val projectId: Int = 0,
+    val parentId: Int? = null,
+    val title: String = "",
+    val icon: String? = null,
+    val isPrivate: Boolean = false,
+    val isLocked: Boolean = false,
+    val isFavorite: Boolean = false,
+    val archivedAt: String? = null,
+    val position: Double = 0.0,
+    val version: Int = 1,
+    val createdAt: String? = null,
+    val updatedAt: String? = null
+)
+
+data class DocumentDto(
+    val id: Int = 0,
+    val projectId: Int = 0,
+    val parentId: Int? = null,
+    val title: String = "",
+    val icon: String? = null,
+    val isPrivate: Boolean = false,
+    val isLocked: Boolean = false,
+    val isFavorite: Boolean = false,
+    val archivedAt: String? = null,
+    val position: Double = 0.0,
+    val version: Int = 1,
+    val content: String = "",
+    val createdAt: String? = null,
+    val updatedAt: String? = null
 )
 
 // --- Error ---

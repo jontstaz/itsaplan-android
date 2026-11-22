@@ -1,7 +1,6 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -11,12 +10,14 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AssignmentInd
 import androidx.compose.material.icons.outlined.Autorenew
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.ViewKanban
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AssignmentInd
 import androidx.compose.material.icons.rounded.Autorenew
+import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Inbox
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.ViewKanban
@@ -44,11 +45,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.dp
 import com.example.data.model.CurrentUserDto
+import com.example.ui.layout.AppWindowSize
+import com.example.ui.layout.TwoPaneListDetail
+import com.example.ui.layout.isCompact
+import com.example.ui.layout.supportsListDetail
+import com.example.ui.layout.usesNavRail
 import com.example.ui.viewmodel.AppUiState
 import com.example.ui.viewmodel.AppViewModel
 import com.example.ui.viewmodel.CyclesViewModel
+import com.example.ui.viewmodel.DocsViewModel
 import com.example.ui.viewmodel.InboxViewModel
 import com.example.ui.viewmodel.IssueDetailViewModel
 import com.example.ui.viewmodel.MyIssuesViewModel
@@ -63,6 +69,7 @@ enum class MainTab(
     MY_ISSUES("My Issues", Icons.Rounded.AssignmentInd, Icons.Outlined.AssignmentInd, "nav_tab_my_issues"),
     INBOX("Inbox", Icons.Rounded.Inbox, Icons.Outlined.Inbox, "nav_tab_inbox"),
     CYCLES("Cycles", Icons.Rounded.Autorenew, Icons.Outlined.Autorenew, "nav_tab_cycles"),
+    DOCS("Docs", Icons.Rounded.Description, Icons.Outlined.Description, "nav_tab_docs"),
     SETTINGS("Settings", Icons.Rounded.Settings, Icons.Outlined.Settings, "nav_tab_settings")
 }
 
@@ -79,7 +86,9 @@ fun MainShell(
     issueDetailViewModel: IssueDetailViewModel,
     inboxViewModel: InboxViewModel,
     cyclesViewModel: CyclesViewModel,
-    myIssuesViewModel: MyIssuesViewModel
+    myIssuesViewModel: MyIssuesViewModel,
+    docsViewModel: DocsViewModel,
+    windowSize: AppWindowSize = AppWindowSize.COMPACT
 ) {
     var currentTab by rememberSaveable { mutableStateOf(MainTab.BOARD) }
     val issueStack = remember { mutableStateListOf<OpenIssueEntry>() }
@@ -98,9 +107,14 @@ fun MainShell(
         }
     }
 
-    // If an issue is open in the detail stack, render IssueDetailScreen full-bleed with BackHandler
+    // On a Compact width (folded cover screen) an open issue replaces the whole
+    // screen, with its own back handling. On Medium/Expanded (unfolded) it sits
+    // beside the originating list in a two-pane layout instead, so opening an
+    // issue never loses the list's scroll position or filters.
     val activeIssue = issueStack.lastOrNull()
-    if (activeIssue != null) {
+    val showsIssueList = currentTab == MainTab.BOARD || currentTab == MainTab.MY_ISSUES || currentTab == MainTab.INBOX
+
+    if (activeIssue != null && (windowSize.isCompact || !showsIssueList)) {
         val knownBoard = if (activeIssue.projectRef == null || activeIssue.projectRef == appState.selectedProject?.routeKey) {
             appState.projectBoard
         } else null
@@ -124,10 +138,9 @@ fun MainShell(
         return
     }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val useNavRail = maxWidth >= 600.dp
+    val useNavRail = windowSize.usesNavRail
 
-        Scaffold(
+    Scaffold(
             contentWindowInsets = WindowInsets.safeDrawing,
             snackbarHost = { SnackbarHost(snackbarHostState) },
             bottomBar = {
@@ -195,81 +208,66 @@ fun MainShell(
                 }
 
                 Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                    when (currentTab) {
-                        MainTab.BOARD -> {
-                            BoardScreen(
-                                state = appState,
-                                onOpenProjectSwitcher = { showProjectSwitcher = true },
-                                onToggleFavorite = {
-                                    appState.selectedProject?.let { appViewModel.toggleProjectFavorite(it) }
-                                },
-                                onRefresh = { appViewModel.refreshBoard(silent = false) },
-                                onSetViewMode = { appViewModel.setBoardViewMode(it) },
-                                onUpdateFilters = { appViewModel.updateBoardFilters(it) },
-                                onOpenFilterSheet = { showFilterSheet = true },
-                                onOpenIssue = { id ->
-                                    issueStack.add(OpenIssueEntry(id, appState.selectedProject?.routeKey))
-                                },
-                                onQuickCreateInColumn = { colId ->
-                                    createIssueInitialColumn = colId
-                                    showCreateIssueSheet = true
-                                },
-                                onMoveIssue = { issue, targetColId ->
-                                    appViewModel.moveIssueToColumn(issue, targetColId)
-                                }
-                            )
-                        }
+                    val showDetailPane = windowSize.supportsListDetail && activeIssue != null && showsIssueList
 
-                        MainTab.MY_ISSUES -> {
-                            MyIssuesScreen(
-                                currentUserId = user.id,
-                                viewModel = myIssuesViewModel,
-                                onOpenIssue = { id, projRef ->
-                                    issueStack.add(OpenIssueEntry(id, projRef))
-                                }
-                            )
-                        }
-
-                        MainTab.INBOX -> {
-                            InboxScreen(
-                                viewModel = inboxViewModel,
-                                onUnreadChanged = { appViewModel.refreshUnreadCount() },
-                                onOpenIssue = { id, projRef ->
-                                    issueStack.add(OpenIssueEntry(id, projRef))
-                                },
-                                onShowMessage = { appViewModel.showSnackbar(it) }
-                            )
-                        }
-
-                        MainTab.CYCLES -> {
-                            CyclesScreen(
-                                selectedProject = appState.selectedProject,
-                                viewModel = cyclesViewModel,
-                                onBoardRefresh = { appViewModel.refreshBoard(silent = true) },
-                                onFilterBoardByCycle = { cycleId ->
-                                    appViewModel.updateBoardFilters { it.copy(cycleId = cycleId, showArchived = false) }
-                                    currentTab = MainTab.BOARD
-                                },
-                                onShowMessage = { appViewModel.showSnackbar(it) }
-                            )
-                        }
-
-                        MainTab.SETTINGS -> {
-                            SettingsScreen(
-                                user = user,
-                                connection = appState.connection,
-                                teams = appState.teams,
-                                projectCount = appState.projects.size,
-                                onThemeModeChange = { appViewModel.setThemeMode(it) },
-                                onLiveSyncToggle = { appViewModel.setLiveSyncEnabled(it) },
-                                onSignOut = { appViewModel.signOut() }
-                            )
-                        }
+                    if (showDetailPane && activeIssue != null) {
+                        TwoPaneListDetail(
+                            listPane = {
+                                MainTabContent(
+                                    currentTab = currentTab,
+                                    appState = appState,
+                                    appViewModel = appViewModel,
+                                    user = user,
+                                    myIssuesViewModel = myIssuesViewModel,
+                                    inboxViewModel = inboxViewModel,
+                                    cyclesViewModel = cyclesViewModel,
+                                    docsViewModel = docsViewModel,
+                                    onOpenIssue = { id, projRef -> issueStack.add(OpenIssueEntry(id, projRef)) },
+                                    onOpenProjectSwitcher = { showProjectSwitcher = true },
+                                    onOpenFilterSheet = { showFilterSheet = true },
+                                    onQuickCreateInColumn = { colId ->
+                                        createIssueInitialColumn = colId
+                                        showCreateIssueSheet = true
+                                    },
+                                    onSwitchTab = { currentTab = it }
+                                )
+                            },
+                            detailPane = {
+                                IssueDetailScreen(
+                                    issueId = activeIssue.issueId,
+                                    currentUser = user,
+                                    knownBoard = if (activeIssue.projectRef == null || activeIssue.projectRef == appState.selectedProject?.routeKey) appState.projectBoard else null,
+                                    knownProjectRef = activeIssue.projectRef ?: appState.selectedProject?.routeKey,
+                                    viewModel = issueDetailViewModel,
+                                    onBack = { if (issueStack.isNotEmpty()) issueStack.removeAt(issueStack.lastIndex) },
+                                    onNavigateToIssue = { nextId -> issueStack.add(OpenIssueEntry(nextId, activeIssue.projectRef)) },
+                                    onBoardDirty = { appViewModel.refreshBoard(silent = true) }
+                                )
+                            }
+                        )
+                    } else {
+                        MainTabContent(
+                            currentTab = currentTab,
+                            appState = appState,
+                            appViewModel = appViewModel,
+                            user = user,
+                            myIssuesViewModel = myIssuesViewModel,
+                            inboxViewModel = inboxViewModel,
+                            cyclesViewModel = cyclesViewModel,
+                            docsViewModel = docsViewModel,
+                            onOpenIssue = { id, projRef -> issueStack.add(OpenIssueEntry(id, projRef)) },
+                            onOpenProjectSwitcher = { showProjectSwitcher = true },
+                            onOpenFilterSheet = { showFilterSheet = true },
+                            onQuickCreateInColumn = { colId ->
+                                createIssueInitialColumn = colId
+                                showCreateIssueSheet = true
+                            },
+                            onSwitchTab = { currentTab = it }
+                        )
                     }
                 }
             }
         }
-    }
 
     // Sheets
     if (showProjectSwitcher) {
@@ -323,6 +321,94 @@ fun MainShell(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun MainTabContent(
+    currentTab: MainTab,
+    appState: AppUiState,
+    appViewModel: AppViewModel,
+    user: CurrentUserDto,
+    myIssuesViewModel: MyIssuesViewModel,
+    inboxViewModel: InboxViewModel,
+    cyclesViewModel: CyclesViewModel,
+    docsViewModel: DocsViewModel,
+    onOpenIssue: (Int, String?) -> Unit,
+    onOpenProjectSwitcher: () -> Unit,
+    onOpenFilterSheet: () -> Unit,
+    onQuickCreateInColumn: (Int) -> Unit,
+    onSwitchTab: (MainTab) -> Unit
+) {
+    when (currentTab) {
+        MainTab.BOARD -> {
+            BoardScreen(
+                state = appState,
+                onOpenProjectSwitcher = onOpenProjectSwitcher,
+                onToggleFavorite = {
+                    appState.selectedProject?.let { appViewModel.toggleProjectFavorite(it) }
+                },
+                onRefresh = { appViewModel.refreshBoard(silent = false) },
+                onSetViewMode = { appViewModel.setBoardViewMode(it) },
+                onUpdateFilters = { appViewModel.updateBoardFilters(it) },
+                onOpenFilterSheet = onOpenFilterSheet,
+                onOpenIssue = { id -> onOpenIssue(id, appState.selectedProject?.routeKey) },
+                onQuickCreateInColumn = onQuickCreateInColumn,
+                onMoveIssue = { issue, targetColId ->
+                    appViewModel.moveIssueToColumn(issue, targetColId)
+                }
+            )
+        }
+
+        MainTab.MY_ISSUES -> {
+            MyIssuesScreen(
+                currentUserId = user.id,
+                viewModel = myIssuesViewModel,
+                onOpenIssue = onOpenIssue
+            )
+        }
+
+        MainTab.INBOX -> {
+            InboxScreen(
+                viewModel = inboxViewModel,
+                onUnreadChanged = { appViewModel.refreshUnreadCount() },
+                onOpenIssue = onOpenIssue,
+                onShowMessage = { appViewModel.showSnackbar(it) }
+            )
+        }
+
+        MainTab.CYCLES -> {
+            CyclesScreen(
+                selectedProject = appState.selectedProject,
+                viewModel = cyclesViewModel,
+                onBoardRefresh = { appViewModel.refreshBoard(silent = true) },
+                onFilterBoardByCycle = { cycleId ->
+                    appViewModel.updateBoardFilters { it.copy(cycleId = cycleId, showArchived = false) }
+                    onSwitchTab(MainTab.BOARD)
+                },
+                onShowMessage = { appViewModel.showSnackbar(it) }
+            )
+        }
+
+        MainTab.DOCS -> {
+            DocsScreen(
+                selectedProject = appState.selectedProject,
+                viewModel = docsViewModel,
+                onShowMessage = { appViewModel.showSnackbar(it) }
+            )
+        }
+
+        MainTab.SETTINGS -> {
+            SettingsScreen(
+                user = user,
+                connection = appState.connection,
+                teams = appState.teams,
+                projectCount = appState.projects.size,
+                onThemeModeChange = { appViewModel.setThemeMode(it) },
+                onLiveSyncToggle = { appViewModel.setLiveSyncEnabled(it) },
+                onSignOut = { appViewModel.signOut() }
+            )
+        }
     }
 }
 

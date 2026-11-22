@@ -16,6 +16,8 @@ import com.example.data.model.CrossProjectIssueHitDto
 import com.example.data.model.CurrentUserDto
 import com.example.data.model.CycleDto
 import com.example.data.model.CyclePageResponse
+import com.example.data.model.DocumentDto
+import com.example.data.model.DocumentSummaryDto
 import com.example.data.model.FeedCountsDto
 import com.example.data.model.FeedItemDto
 import com.example.data.model.FeedPageResponse
@@ -604,5 +606,54 @@ class ItsAPlanRepository(
     suspend fun getSyncRevs(scopes: List<String>): Result<Map<String, String>> = safeCall {
         if (scopes.isEmpty()) return@safeCall emptyMap()
         clientManager.getApi().getSyncRevs(scopes.joinToString(",")).revs
+    }
+
+    // --- Documents (Docs) ---
+
+    suspend fun listDocuments(projectRef: String, query: String? = null, archived: Boolean = false): Result<List<DocumentSummaryDto>> = safeCall {
+        clientManager.getApi().listDocuments(
+            projectRef,
+            query = query?.takeIf { it.isNotBlank() },
+            archived = if (archived) "true" else null
+        )
+    }
+
+    suspend fun getDocument(projectRef: String, documentId: Int): Result<DocumentDto> = safeCall {
+        clientManager.getApi().getDocument(projectRef, documentId)
+    }
+
+    suspend fun createDocument(
+        projectRef: String,
+        title: String,
+        content: String? = null,
+        parentId: Int? = null
+    ): Result<DocumentDto> = safeCall {
+        val map = mutableMapOf<String, Any?>("title" to title.trim())
+        if (!content.isNullOrBlank()) map["content"] = content
+        if (parentId != null) map["parentId"] = parentId
+        clientManager.getApi().createDocument(projectRef, jsonBodyFromMap(map))
+    }
+
+    suspend fun updateDocument(
+        projectRef: String,
+        documentId: Int,
+        version: Int,
+        title: String? = null,
+        content: String? = null
+    ): Result<DocumentDto> = safeCall {
+        val map = mutableMapOf<String, Any?>("version" to version)
+        if (title != null) map["title"] = title.trim()
+        if (content != null) map["content"] = content
+        clientManager.getApi().updateDocument(projectRef, documentId, jsonBodyFromMap(map))
+    }
+
+    suspend fun archiveDocument(projectRef: String, documentId: Int, version: Int): Result<Unit> = safeCall {
+        clientManager.getApi().archiveDocument(projectRef, documentId, jsonBody("version" to version))
+        Unit
+    }
+
+    suspend fun restoreDocument(projectRef: String, documentId: Int, version: Int): Result<Unit> = safeCall {
+        clientManager.getApi().restoreDocument(projectRef, documentId, jsonBody("version" to version))
+        Unit
     }
 }
