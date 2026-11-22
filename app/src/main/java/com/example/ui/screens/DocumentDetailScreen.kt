@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.components.ErrorBanner
 import com.example.ui.viewmodel.DocsViewModel
-import dev.jeziellago.compose.markdowntext.MarkdownText
+import com.example.ui.components.ThemedMarkdownText
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -168,7 +168,7 @@ fun DocumentDetailScreen(
                                 style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
                             )
                             if (doc.content.isNotBlank()) {
-                                MarkdownText(
+                                ThemedMarkdownText(
                                     markdown = doc.content,
                                     style = MaterialTheme.typography.bodyMedium.copy(
                                         color = MaterialTheme.colorScheme.onSurface

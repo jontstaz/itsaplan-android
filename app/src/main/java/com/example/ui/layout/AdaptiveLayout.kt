@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
  */
 @Composable
 fun TwoPaneListDetail(
-    listPaneWidth: Dp = 380.dp,
+    listPaneWidth: Dp = 320.dp,
     listPane: @Composable () -> Unit,
     detailPane: @Composable () -> Unit
 ) {

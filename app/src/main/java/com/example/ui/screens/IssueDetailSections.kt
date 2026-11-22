@@ -376,7 +376,7 @@ fun IssueFeedSection(
                                     }
                                 }
 
-                                dev.jeziellago.compose.markdowntext.MarkdownText(
+                                com.example.ui.components.ThemedMarkdownText(
                                     markdown = item.body.orEmpty(),
                                     style = MaterialTheme.typography.bodyMedium.copy(
                                         color = MaterialTheme.colorScheme.onSurface

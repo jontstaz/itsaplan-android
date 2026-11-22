@@ -98,7 +98,8 @@ fun BoardScreen(
     onOpenFilterSheet: () -> Unit,
     onOpenIssue: (Int) -> Unit,
     onQuickCreateInColumn: (Int) -> Unit,
-    onMoveIssue: (BoardIssueDto, Int) -> Unit
+    onMoveIssue: (BoardIssueDto, Int) -> Unit,
+    forceListView: Boolean = false
 ) {
     var moveTargetIssue by remember { mutableStateOf<BoardIssueDto?>(null) }
     var showSearchBar by remember { mutableStateOf(false) }
@@ -436,7 +437,7 @@ fun BoardScreen(
                 }
             }
 
-            state.boardViewMode == BoardViewMode.KANBAN -> {
+            !forceListView && state.boardViewMode == BoardViewMode.KANBAN -> {
                 LazyRow(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),

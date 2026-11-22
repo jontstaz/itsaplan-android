@@ -108,6 +108,15 @@ dependencies {
   // implementation(libs.androidx.room.runtime)
   implementation(libs.coil.compose)
   implementation(libs.compose.markdown)
+  // Direct Markwon deps so we can theme code blocks (compose-markdown only exposes
+  // Markwon as a runtime transitive dep, not on the compile classpath).
+  implementation("io.noties.markwon:core:4.6.2")
+  implementation("io.noties.markwon:ext-strikethrough:4.6.2")
+  implementation("io.noties.markwon:ext-tables:4.6.2")
+  implementation("io.noties.markwon:ext-tasklist:4.6.2")
+  implementation("io.noties.markwon:html:4.6.2")
+  implementation("io.noties.markwon:linkify:4.6.2")
+  implementation("com.github.jeziellago:Markwon:58aa5aba6a") // Coil images plugin
   implementation(libs.converter.moshi)
   // implementation(libs.firebase.ai)
   // Uncomment to use Firestore:

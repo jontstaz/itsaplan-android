@@ -36,6 +36,8 @@ import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Fullscreen
+import androidx.compose.material.icons.rounded.FullscreenExit
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.MoreVert
@@ -123,7 +125,9 @@ fun IssueDetailScreen(
     viewModel: IssueDetailViewModel,
     onBack: () -> Unit,
     onNavigateToIssue: (Int) -> Unit,
-    onBoardDirty: () -> Unit
+    onBoardDirty: () -> Unit,
+    isFullscreen: Boolean = false,
+    onToggleFullscreen: (() -> Unit)? = null
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -211,6 +215,17 @@ fun IssueDetailScreen(
                     }
                 },
                 actions = {
+                    if (onToggleFullscreen != null) {
+                        IconButton(
+                            onClick = onToggleFullscreen,
+                            modifier = Modifier.testTag("issue_fullscreen_toggle")
+                        ) {
+                            Icon(
+                                imageVector = if (isFullscreen) Icons.Rounded.FullscreenExit else Icons.Rounded.Fullscreen,
+                                contentDescription = if (isFullscreen) "Exit fullscreen" else "Open fullscreen"
+                            )
+                        }
+                    }
                     if (issue != null) {
                         IconButton(
                             onClick = { viewModel.toggleWatch(isWatching) },
@@ -372,7 +387,7 @@ fun IssueDetailScreen(
                                     }
 
                                     if (!issue.description.isNullOrBlank()) {
-                                        dev.jeziellago.compose.markdowntext.MarkdownText(
+                                        com.example.ui.components.ThemedMarkdownText(
                                             markdown = issue.description,
                                             style = MaterialTheme.typography.bodyMedium.copy(
                                                 color = MaterialTheme.colorScheme.onSurface

@@ -92,6 +92,7 @@ fun MainShell(
 ) {
     var currentTab by rememberSaveable { mutableStateOf(MainTab.BOARD) }
     val issueStack = remember { mutableStateListOf<OpenIssueEntry>() }
+    var issueFullscreen by rememberSaveable { mutableStateOf(false) }
 
     var showProjectSwitcher by remember { mutableStateOf(false) }
     var showFilterSheet by remember { mutableStateOf(false) }
@@ -114,7 +115,7 @@ fun MainShell(
     val activeIssue = issueStack.lastOrNull()
     val showsIssueList = currentTab == MainTab.BOARD || currentTab == MainTab.MY_ISSUES || currentTab == MainTab.INBOX
 
-    if (activeIssue != null && (windowSize.isCompact || !showsIssueList)) {
+    if (activeIssue != null && (windowSize.isCompact || !showsIssueList || issueFullscreen)) {
         val knownBoard = if (activeIssue.projectRef == null || activeIssue.projectRef == appState.selectedProject?.routeKey) {
             appState.projectBoard
         } else null
@@ -126,14 +127,17 @@ fun MainShell(
             knownProjectRef = activeIssue.projectRef ?: appState.selectedProject?.routeKey,
             viewModel = issueDetailViewModel,
             onBack = {
-                if (issueStack.isNotEmpty()) issueStack.removeAt(issueStack.lastIndex)
+                if (issueFullscreen) issueFullscreen = false
+                else if (issueStack.isNotEmpty()) issueStack.removeAt(issueStack.lastIndex)
             },
             onNavigateToIssue = { nextId ->
                 issueStack.add(OpenIssueEntry(nextId, activeIssue.projectRef))
             },
             onBoardDirty = {
                 appViewModel.refreshBoard(silent = true)
-            }
+            },
+            isFullscreen = true,
+            onToggleFullscreen = if (windowSize.supportsListDetail && showsIssueList) ({ issueFullscreen = false }) else null
         )
         return
     }
@@ -229,7 +233,10 @@ fun MainShell(
                                         createIssueInitialColumn = colId
                                         showCreateIssueSheet = true
                                     },
-                                    onSwitchTab = { currentTab = it }
+                                    onSwitchTab = { currentTab = it },
+                                    // Inside a 320dp list pane the Kanban columns
+                                    // would clip. Force the vertical list view.
+                                    forceBoardListView = true
                                 )
                             },
                             detailPane = {
@@ -241,7 +248,9 @@ fun MainShell(
                                     viewModel = issueDetailViewModel,
                                     onBack = { if (issueStack.isNotEmpty()) issueStack.removeAt(issueStack.lastIndex) },
                                     onNavigateToIssue = { nextId -> issueStack.add(OpenIssueEntry(nextId, activeIssue.projectRef)) },
-                                    onBoardDirty = { appViewModel.refreshBoard(silent = true) }
+                                    onBoardDirty = { appViewModel.refreshBoard(silent = true) },
+                                    isFullscreen = false,
+                                    onToggleFullscreen = { issueFullscreen = true }
                                 )
                             }
                         )
@@ -338,7 +347,8 @@ private fun MainTabContent(
     onOpenProjectSwitcher: () -> Unit,
     onOpenFilterSheet: () -> Unit,
     onQuickCreateInColumn: (Int) -> Unit,
-    onSwitchTab: (MainTab) -> Unit
+    onSwitchTab: (MainTab) -> Unit,
+    forceBoardListView: Boolean = false
 ) {
     when (currentTab) {
         MainTab.BOARD -> {
@@ -356,7 +366,8 @@ private fun MainTabContent(
                 onQuickCreateInColumn = onQuickCreateInColumn,
                 onMoveIssue = { issue, targetColId ->
                     appViewModel.moveIssueToColumn(issue, targetColId)
-                }
+                },
+                forceListView = forceBoardListView
             )
         }
 
