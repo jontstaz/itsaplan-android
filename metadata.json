@@ -1,0 +1,6 @@
+{
+  "name": "It's a Plan",
+  "description": "Native Android client for self-hosted itsaplan deployments with Kanban boards, issue tracking, cycles, notifications, and real-time sync.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

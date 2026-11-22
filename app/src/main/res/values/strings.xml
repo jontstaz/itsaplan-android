@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">It\'s a Plan</string>
+    <string name="connect_title">Connect to your deployment</string>
+    <string name="connect_subtitle">Enter your self-hosted itsaplan API URL and authenticate with your account or personal API key.</string>
+    <string name="server_url_label">API Server URL</string>
+    <string name="server_url_placeholder">https://api.itsaplan.example.com</string>
+    <string name="test_connection">Verify Server</string>
+    <string name="tab_board">Board</string>
+    <string name="tab_my_issues">My Issues</string>
+    <string name="tab_inbox">Inbox</string>
+    <string name="tab_cycles">Cycles</string>
+    <string name="tab_settings">Settings</string>
+    <string name="create_issue">New Issue</string>
+    <string name="search_issues_hint">Search issues across projects…</string>
+    <string name="sign_out">Sign Out</string>
+    <string name="http_warning">Unencrypted HTTP connection — use HTTPS for production deployments.</string>
+</resources>

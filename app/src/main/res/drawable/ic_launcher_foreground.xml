@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Safe zone is 24..84 (60x60 centered) -->
+    <!-- Stylized 3-column Kanban board mark with glowing emerald check badge -->
+    <!-- Left column -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M29,34 C29,31.8 30.8,30 33,30 L41,30 C43.2,30 45,31.8 45,34 L45,70 C45,72.2 43.2,74 41,74 L33,74 C30.8,74 29,72.2 29,70 Z" />
+    <!-- Middle column (shorter) -->
+    <path
+        android:fillColor="#E0E7FF"
+        android:pathData="M48,34 C48,31.8 49.8,30 52,30 L60,30 C62.2,30 64,31.8 64,34 L64,58 C64,60.2 62.2,62 60,62 L52,62 C49.8,62 48,60.2 48,58 Z" />
+    <!-- Right column (top card) -->
+    <path
+        android:fillColor="#C7D2FE"
+        android:pathData="M67,34 C67,31.8 68.8,30 71,30 L75,30 C77.2,30 79,31.8 79,34 L79,50 C79,52.2 77.2,54 75,54 L71,54 C68.8,54 67,52.2 67,50 Z" />
+    <!-- Emerald accent completion circle + check -->
+    <path
+        android:fillColor="#10B981"
+        android:pathData="M71,58 A10,10 0 1,0 71,78 A10,10 0 1,0 71,58 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M66.8,68.2 L69.8,71.2 L75.6,65.2" />
+</vector>
