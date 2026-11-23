@@ -159,7 +159,7 @@ class IssueDetailViewModel(
         val state = _uiState.value
         val cursor = state.feedNextCursor ?: return
         viewModelScope.launch {
-            repository.getIssueFeed(state.issueId, state.feedFilter.apiValue, cursor.toQueryParam()).onSuccess { page ->
+            repository.getIssueFeed(state.issueId, state.feedFilter.apiValue, cursor.takeIf { it.isValid }?.toQueryParam()).onSuccess { page ->
                 _uiState.update {
                     it.copy(
                         feedItems = it.feedItems + page.items,

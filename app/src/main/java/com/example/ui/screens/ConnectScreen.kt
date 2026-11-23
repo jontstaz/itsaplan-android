@@ -52,6 +52,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -90,11 +91,13 @@ fun ConnectScreen(
 ) {
     var serverUrl by rememberSaveable { mutableStateOf(savedServerUrl) }
     var selectedTab by rememberSaveable { mutableIntStateOf(0) } // 0 = API Key, 1 = Password
-    var apiKey by rememberSaveable { mutableStateOf("") }
-    var showApiKey by rememberSaveable { mutableStateOf(false) }
+    // Secrets stay in plain remember: rememberSaveable would write them into the saved
+    // instance state bundle, which survives process death and can be dumped by the system.
+    var apiKey by remember { mutableStateOf("") }
+    var showApiKey by remember { mutableStateOf(false) }
     var identifier by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
-    var showPassword by rememberSaveable { mutableStateOf(false) }
+    var password by remember { mutableStateOf("") }
+    var showPassword by remember { mutableStateOf(false) }
 
     LaunchedEffect(savedServerUrl) {
         if (serverUrl.isBlank() && savedServerUrl.isNotBlank()) {

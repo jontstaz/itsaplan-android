@@ -32,7 +32,7 @@
 
         <receiver
             android:name=".widget.MyIssuesWidgetReceiver"
-            android:exported="true"
+            android:exported="false"
             android:label="My Issues">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />

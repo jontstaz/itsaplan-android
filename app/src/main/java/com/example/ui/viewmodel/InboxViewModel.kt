@@ -44,7 +44,7 @@ class InboxViewModel(
                 includeRead = !state.unreadOnly,
                 includeSnoozed = state.includeSnoozed,
                 types = state.selectedType,
-                cursor = cursor?.toQueryParam()
+                cursor = cursor?.takeIf { it.isValid }?.toQueryParam()
             ).fold(
                 onSuccess = { page ->
                     _uiState.update {

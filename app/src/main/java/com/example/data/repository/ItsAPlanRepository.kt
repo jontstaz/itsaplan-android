@@ -5,6 +5,9 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import com.example.data.local.AuthMode
 import com.example.data.local.ConnectionStore
+import com.example.data.local.DraftStore
+import com.example.data.local.RecentIssuesStore
+import com.example.data.local.WidgetCache
 import com.example.data.local.StoredConnection
 import com.example.data.model.AttachmentDto
 import com.example.data.model.AuthConfigResponse
@@ -52,6 +55,8 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 
+private const val MAX_UPLOAD_BYTES = 25L * 1024 * 1024
+
 data class ServerProbeResult(
     val normalizedUrl: String,
     val health: HealthResponse,
@@ -64,6 +69,15 @@ class ItsAPlanRepository(
     val clientManager: ApiClientManager
 ) {
     val connectionFlow: Flow<StoredConnection> = store.connectionFlow
+
+    /**
+     * Retrofit hands back `Response<…>` for bodyless endpoints without throwing on
+     * non-2xx, so without this a 403 or 500 would be reported to the UI as success.
+     */
+    private fun retrofit2.Response<*>.requireSuccess(action: String) {
+        if (isSuccessful) return
+        throw clientManager.exceptionFor(code(), errorBody()?.string(), action)
+    }
 
     private suspend fun <T> safeCall(block: suspend () -> T): Result<T> = withContext(Dispatchers.IO) {
         try {
@@ -177,11 +191,20 @@ class ItsAPlanRepository(
         if (saved.authMode == AuthMode.SESSION && saved.hasCredentials) {
             try {
                 clientManager.getApi().signOut(jsonBody())
+            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                throw cancel
             } catch (_: Exception) {
                 // Always clear local credentials even if server sign-out fails
             }
         }
+        // Retire the session before anything else: if a later cleanup step fails, the
+        // shared client still must not keep answering with the old credentials.
+        clientManager.clearAuth()
         store.clearAuth(keepServerUrl = true)
+        // Account-scoped local data must not survive into the next sign-in.
+        DraftStore(context).clearAll()
+        RecentIssuesStore(context).clearAll()
+        WidgetCache(context).clear()
     }
 
     suspend fun saveLastProjectRef(ref: String) = store.saveLastProjectRef(ref)
@@ -316,17 +339,17 @@ class ItsAPlanRepository(
     }
 
     suspend fun archiveIssue(issueId: Int, subtasksMode: String = "detach"): Result<Unit> = safeCall {
-        clientManager.getApi().archiveIssue(issueId, jsonBody("subtasks" to subtasksMode))
+        clientManager.getApi().archiveIssue(issueId, jsonBody("subtasks" to subtasksMode)).requireSuccess("Could not archive issue")
         Unit
     }
 
     suspend fun restoreIssue(issueId: Int): Result<Unit> = safeCall {
-        clientManager.getApi().restoreIssue(issueId)
+        clientManager.getApi().restoreIssue(issueId).requireSuccess("Could not restore issue")
         Unit
     }
 
     suspend fun deleteIssue(issueId: Int, subtasksMode: String? = "detach"): Result<Unit> = safeCall {
-        clientManager.getApi().deleteIssue(issueId, subtasksMode)
+        clientManager.getApi().deleteIssue(issueId, subtasksMode).requireSuccess("Could not delete issue")
         Unit
     }
 
@@ -379,7 +402,7 @@ class ItsAPlanRepository(
     }
 
     suspend fun deleteComment(commentId: Int): Result<Unit> = safeCall {
-        clientManager.getApi().deleteComment(commentId)
+        clientManager.getApi().deleteComment(commentId).requireSuccess("Could not delete comment")
         Unit
     }
 
@@ -410,7 +433,7 @@ class ItsAPlanRepository(
     }
 
     suspend fun deleteChecklist(checklistId: Int): Result<Unit> = safeCall {
-        clientManager.getApi().deleteChecklist(checklistId)
+        clientManager.getApi().deleteChecklist(checklistId).requireSuccess("Could not delete checklist")
         Unit
     }
 
@@ -423,7 +446,7 @@ class ItsAPlanRepository(
     }
 
     suspend fun deleteChecklistItem(itemId: Int): Result<Unit> = safeCall {
-        clientManager.getApi().deleteChecklistItem(itemId)
+        clientManager.getApi().deleteChecklistItem(itemId).requireSuccess("Could not delete checklist item")
         Unit
     }
 
@@ -448,7 +471,7 @@ class ItsAPlanRepository(
     }
 
     suspend fun deleteWorklog(worklogId: Int): Result<Unit> = safeCall {
-        clientManager.getApi().deleteWorklog(worklogId)
+        clientManager.getApi().deleteWorklog(worklogId).requireSuccess("Could not delete worklog")
         Unit
     }
 
@@ -462,7 +485,7 @@ class ItsAPlanRepository(
     }
 
     suspend fun deleteIssueLink(issueId: Int, linkId: Int): Result<Unit> = safeCall {
-        clientManager.getApi().deleteIssueLink(issueId, linkId)
+        clientManager.getApi().deleteIssueLink(issueId, linkId).requireSuccess("Could not remove link")
         Unit
     }
 
@@ -485,18 +508,31 @@ class ItsAPlanRepository(
                 }
             }
         }
-        val bytes = resolver.openInputStream(uri)?.use { it.readBytes() }
+        // Cap while streaming: reading first and checking afterwards would let an
+        // unbounded provider stream exhaust the heap before the limit is applied.
+        val bytes = resolver.openInputStream(uri)?.use { readCapped(it, MAX_UPLOAD_BYTES) }
             ?: throw ApiException(400, "Could not read selected file.")
-        if (bytes.size > 25 * 1024 * 1024) {
-            throw ApiException(413, "File exceeds the 25 MB upload limit.")
-        }
         val requestBody = bytes.toRequestBody(mimeType.toMediaTypeOrNull())
         val part = MultipartBody.Part.createFormData("file", fileName, requestBody)
         clientManager.getApi().uploadAttachment(issueId, part)
     }
 
+    private fun readCapped(input: java.io.InputStream, maxBytes: Long): ByteArray {
+        val out = java.io.ByteArrayOutputStream()
+        val buffer = ByteArray(64 * 1024)
+        var total = 0L
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) break
+            total += read
+            if (total > maxBytes) throw ApiException(413, "File exceeds the 25 MB upload limit.")
+            out.write(buffer, 0, read)
+        }
+        return out.toByteArray()
+    }
+
     suspend fun deleteAttachment(publicId: String): Result<Unit> = safeCall {
-        clientManager.getApi().deleteAttachment(publicId)
+        clientManager.getApi().deleteAttachment(publicId).requireSuccess("Could not delete attachment")
         Unit
     }
 
@@ -558,10 +594,7 @@ class ItsAPlanRepository(
     }
 
     suspend fun deleteInitiative(initiativeId: Int): Result<Unit> = safeCall {
-        val response = clientManager.getApi().deleteInitiative(initiativeId)
-        if (!response.isSuccessful && response.code() != 204) {
-            throw ApiException(response.code(), "Could not delete initiative.")
-        }
+        clientManager.getApi().deleteInitiative(initiativeId).requireSuccess("Could not delete initiative")
     }
 
     suspend fun createCycle(
@@ -585,7 +618,7 @@ class ItsAPlanRepository(
     }
 
     suspend fun deleteCycle(cycleId: Int): Result<Unit> = safeCall {
-        clientManager.getApi().deleteCycle(cycleId)
+        clientManager.getApi().deleteCycle(cycleId).requireSuccess("Could not delete cycle")
         Unit
     }
 
@@ -624,22 +657,22 @@ class ItsAPlanRepository(
     }
 
     suspend fun markNotificationRead(id: Int, read: Boolean): Result<Unit> = safeCall {
-        clientManager.getApi().setNotificationRead(id, jsonBody("read" to read))
+        clientManager.getApi().setNotificationRead(id, jsonBody("read" to read)).requireSuccess("Could not update notification")
         Unit
     }
 
     suspend fun markAllNotificationsRead(): Result<Unit> = safeCall {
-        clientManager.getApi().markAllNotificationsRead(jsonBody())
+        clientManager.getApi().markAllNotificationsRead(jsonBody()).requireSuccess("Could not mark notifications read")
         Unit
     }
 
     suspend fun snoozeNotification(id: Int, untilIso: String?): Result<Unit> = safeCall {
-        clientManager.getApi().snoozeNotification(id, jsonBody("until" to untilIso))
+        clientManager.getApi().snoozeNotification(id, jsonBody("until" to untilIso)).requireSuccess("Could not snooze notification")
         Unit
     }
 
     suspend fun deleteNotification(id: Int): Result<Unit> = safeCall {
-        clientManager.getApi().deleteNotification(id)
+        clientManager.getApi().deleteNotification(id).requireSuccess("Could not delete notification")
         Unit
     }
 
@@ -690,7 +723,7 @@ class ItsAPlanRepository(
     }
 
     suspend fun archiveDocument(projectRef: String, documentId: Int, version: Int): Result<Unit> = safeCall {
-        clientManager.getApi().archiveDocument(projectRef, documentId, jsonBody("version" to version))
+        clientManager.getApi().archiveDocument(projectRef, documentId, jsonBody("version" to version)).requireSuccess("Could not archive document")
         Unit
     }
 

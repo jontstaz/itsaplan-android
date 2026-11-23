@@ -46,6 +46,9 @@ data class CursorDto(
     val ts: String = "",
     val id: Int = 0
 ) {
+    /** A cursor missing either half cannot page; treat it as "no more pages". */
+    val isValid: Boolean get() = ts.isNotBlank() && id > 0
+
     fun toQueryParam(): String = JSONObject()
         .put("ts", ts)
         .put("id", id)
@@ -448,7 +451,8 @@ data class IssueWatcherDto(
 )
 
 data class WatchStateResponse(
-    val ok: Boolean = true
+    // Required: a response that omits `ok` must fail to parse rather than look like success.
+    val ok: Boolean
 )
 
 data class ChecklistDto(

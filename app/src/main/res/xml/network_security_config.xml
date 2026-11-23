@@ -1,10 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- Self-hosted deployments may run on local LAN or dev HTTP endpoints.
-         The app explicitly warns users whenever connecting over non-HTTPS. -->
-    <base-config cleartextTrafficPermitted="true">
+    <!-- HTTPS everywhere. Plain HTTP is allowed only for loopback and the emulator
+         host, which is what ApiClientManager.requireAcceptableTransport also permits.
+         A self-hosted server on a LAN therefore needs a TLS certificate (or a reverse
+         proxy) rather than an http:// address. -->
+    <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
     </base-config>
+
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
 </network-security-config>

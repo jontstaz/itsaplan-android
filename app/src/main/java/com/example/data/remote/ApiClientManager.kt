@@ -43,6 +43,14 @@ class ApiClientManager {
     @Volatile
     private var currentSessionCookie: String = ""
 
+    /**
+     * The origin (scheme://host:port) the stored credentials belong to. Auth headers are
+     * only ever attached to requests aimed at exactly this origin, so switching servers
+     * can never leak the previous key or cookie to a different host.
+     */
+    @Volatile
+    private var credentialOrigin: String = ""
+
     @Volatile
     private var cachedApi: ItsAPlanApi? = null
 
@@ -66,8 +74,10 @@ class ApiClientManager {
         val normalized = normalizeServerUrl(serverUrl)
             ?: throw IllegalArgumentException("Invalid server URL. Use http:// or https://")
 
+        requireAcceptableTransport(normalized)
         val baseChanged = normalized != currentBaseUrl
         currentBaseUrl = normalized
+        credentialOrigin = if (authMode == AuthMode.NONE) "" else originOf(normalized)
         currentAuthMode = authMode
         currentApiKey = apiKey.trim()
         currentSessionCookie = sessionCookie.trim()
@@ -98,30 +108,23 @@ class ApiClientManager {
         val normalized = normalizeServerUrl(serverUrl)
             ?: throw IllegalArgumentException("Please enter a valid http:// or https:// URL")
 
+        requireAcceptableTransport(normalized)
         val client = OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(25, TimeUnit.SECONDS)
             .writeTimeout(25, TimeUnit.SECONDS)
-            .addInterceptor { chain ->
-                val reqBuilder = chain.request().newBuilder()
-                    .header("Accept", "application/json")
-                val path = chain.request().url.encodedPath
-                val isAuthRoute = path.startsWith("/api/auth/")
-                when (authMode) {
-                    AuthMode.API_KEY -> {
-                        if (apiKey.isNotBlank() && !isAuthRoute) {
-                            reqBuilder.header("x-api-key", apiKey.trim())
-                        }
-                    }
-                    AuthMode.SESSION -> {
-                        if (sessionCookie.isNotBlank()) {
-                            reqBuilder.header("Cookie", sessionCookie.trim())
-                        }
-                    }
-                    AuthMode.NONE -> Unit
-                }
-                chain.proceed(reqBuilder.build())
-            }
+            // Never follow a redirect: a 3xx could otherwise re-send the credentials we
+            // attach here to a host the caller never configured.
+            .followRedirects(false)
+            .followSslRedirects(false)
+            .addInterceptor(
+                authInterceptor(
+                    modeProvider = { authMode },
+                    keyProvider = { apiKey },
+                    cookieProvider = { sessionCookie },
+                    originProvider = { originOf(normalized) }
+                )
+            )
             .build()
 
         return Retrofit.Builder()
@@ -133,40 +136,78 @@ class ApiClientManager {
     }
 
     private fun buildOkHttpClient(): OkHttpClient {
-        val authInterceptor = Interceptor { chain ->
-            val original = chain.request()
-            val reqBuilder = original.newBuilder()
-                .header("Accept", "application/json")
-
-            val path = original.url.encodedPath
-            val isAuthRoute = path.startsWith("/api/auth/")
-
-            when (currentAuthMode) {
-                AuthMode.API_KEY -> {
-                    val key = currentApiKey
-                    if (key.isNotBlank() && !isAuthRoute) {
-                        reqBuilder.header("x-api-key", key)
-                    }
-                }
-                AuthMode.SESSION -> {
-                    val cookie = currentSessionCookie
-                    if (cookie.isNotBlank()) {
-                        reqBuilder.header("Cookie", cookie)
-                    }
-                }
-                AuthMode.NONE -> Unit
-            }
-
-            chain.proceed(reqBuilder.build())
-        }
+        val authInterceptor = authInterceptor(
+            modeProvider = { currentAuthMode },
+            keyProvider = { currentApiKey },
+            cookieProvider = { currentSessionCookie },
+            originProvider = { credentialOrigin }
+        )
 
         return OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(45, TimeUnit.SECONDS)
+            .followRedirects(false)
+            .followSslRedirects(false)
             .addInterceptor(authInterceptor)
             .build()
     }
+
+    /**
+     * Attaches credentials only when the request targets the origin those credentials
+     * were configured for. Anything else (redirects, absolute URLs baked into a payload)
+     * goes out unauthenticated.
+     */
+    private fun authInterceptor(
+        modeProvider: () -> AuthMode,
+        keyProvider: () -> String,
+        cookieProvider: () -> String,
+        originProvider: () -> String
+    ): Interceptor = Interceptor { chain ->
+        val original = chain.request()
+        val reqBuilder = original.newBuilder()
+            .header("Accept", "application/json")
+
+        val expectedOrigin = originProvider()
+        if (expectedOrigin.isNotBlank() && originOf(original.url) == expectedOrigin) {
+            val path = original.url.encodedPath
+            val isAuthRoute = path.startsWith("/api/auth/")
+            when (modeProvider()) {
+                AuthMode.API_KEY -> {
+                    val key = keyProvider()
+                    if (key.isNotBlank() && !isAuthRoute) reqBuilder.header("x-api-key", key)
+                }
+                AuthMode.SESSION -> {
+                    val cookie = cookieProvider()
+                    if (cookie.isNotBlank()) reqBuilder.header("Cookie", cookie)
+                }
+                AuthMode.NONE -> Unit
+            }
+        }
+
+        chain.proceed(reqBuilder.build())
+    }
+
+    /** Drops every credential the shared client still holds. */
+    fun clearAuth() {
+        currentAuthMode = AuthMode.NONE
+        currentApiKey = ""
+        currentSessionCookie = ""
+        credentialOrigin = ""
+    }
+
+    private fun originOf(url: String): String =
+        url.toHttpUrlOrNull()?.let { originOf(it) } ?: ""
+
+    private fun originOf(url: okhttp3.HttpUrl): String =
+        "${url.scheme}://${url.host}:${url.port}"
+
+    /**
+     * Plain HTTP is only allowed for the loopback and emulator hosts that
+     * res/xml/network_security_config.xml likewise permits. Everything else has to be
+     * https, so a mistyped URL cannot silently send an API key in the clear.
+     */
+    private fun requireAcceptableTransport(normalized: String) = assertAcceptableTransport(normalized)
 
     private fun rebuildClient(normalizedBaseUrl: String) {
         val okHttp = cachedOkHttp ?: buildOkHttpClient().also { cachedOkHttp = it }
@@ -186,7 +227,36 @@ class ApiClientManager {
         return if (trimmed.startsWith("/")) "$currentBaseUrl$trimmed" else "$currentBaseUrl/$trimmed"
     }
 
+    /** Builds the same ApiException the typed endpoints produce, for bodyless responses. */
+    fun exceptionFor(status: Int, rawBody: String?, action: String? = null): ApiException {
+        val parsed = rawBody?.let {
+            try {
+                errorAdapter.fromJson(it)
+            } catch (_: Exception) {
+                null
+            }
+        }
+        val message = parsed?.error ?: parsed?.message ?: defaultStatusMessage(status)
+        return ApiException(
+            statusCode = status,
+            message = if (action != null) "$action: $message" else message,
+            errorCode = parsed?.code
+        )
+    }
+
+    private fun defaultStatusMessage(status: Int): String = when (status) {
+        401 -> "Authentication required or session expired."
+        403 -> "You don't have permission for this action."
+        404 -> "The requested resource was not found."
+        409 -> "Conflict: action rejected by server rules."
+        429 -> "Rate limit reached. Please wait a moment."
+        in 500..599 -> "Server error ($status). Check your itsaplan instance."
+        else -> "Request failed (HTTP $status)."
+    }
+
     fun parseError(throwable: Throwable): ApiException {
+        // Cancellation must propagate so callers can tell "aborted" from "failed".
+        if (throwable is kotlinx.coroutines.CancellationException) throw throwable
         return when (throwable) {
             is ApiException -> throwable
             is HttpException -> {
@@ -203,15 +273,7 @@ class ApiClientManager {
                         null
                     }
                 }
-                val message = parsed?.error ?: parsed?.message ?: when (status) {
-                    401 -> "Authentication required or session expired."
-                    403 -> "You don't have permission for this action."
-                    404 -> "The requested resource was not found."
-                    409 -> "Conflict: action rejected by server rules."
-                    429 -> "Rate limit reached. Please wait a moment."
-                    in 500..599 -> "Server error ($status). Check your itsaplan instance."
-                    else -> "Request failed (HTTP $status)."
-                }
+                val message = parsed?.error ?: parsed?.message ?: defaultStatusMessage(status)
                 ApiException(statusCode = status, message = message, errorCode = parsed?.code)
             }
             is IOException -> ApiException(
@@ -246,6 +308,26 @@ class ApiClientManager {
             if (parsed.scheme != "http" && parsed.scheme != "https") return null
             if (parsed.host.isBlank()) return null
             return parsed.toString().trimEnd('/')
+        }
+
+        /**
+         * Rejects plain HTTP for anything but loopback/emulator hosts, so a mistyped URL
+         * cannot send credentials in the clear. Mirrors network_security_config.xml.
+         */
+        fun assertAcceptableTransport(normalized: String) {
+            val url = normalizeServerUrl(normalized)?.toHttpUrlOrNull()
+                ?: throw IllegalArgumentException("Invalid server URL.")
+            if (url.scheme == "https") return
+            if (isLocalDevelopmentHost(url.host)) return
+            throw IllegalArgumentException(
+                "This address uses plain HTTP. Use an https:// URL, or connect to localhost/10.0.2.2 for local development."
+            )
+        }
+
+        /** Hosts allowed to speak plain HTTP for local development. */
+        fun isLocalDevelopmentHost(host: String): Boolean {
+            val h = host.lowercase()
+            return h == "localhost" || h == "127.0.0.1" || h == "::1" || h == "10.0.2.2"
         }
 
         fun isInsecureHttpUrl(url: String): Boolean {

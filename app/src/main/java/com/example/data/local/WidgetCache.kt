@@ -57,4 +57,9 @@ class WidgetCache(private val context: Context) {
             emptyList()
         }
     }
+
+    /** Empties the widget cache so a signed-out device shows no account titles. */
+    suspend fun clear() {
+        context.widgetStore.edit { prefs -> prefs.remove(KEY_MY_ISSUES) }
+    }
 }

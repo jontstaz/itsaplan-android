@@ -58,4 +58,9 @@ class RecentIssuesStore(private val context: Context) {
             emptyList()
         }
     }
+
+    /** Drops the recent-issue history; used when an account signs out. */
+    suspend fun clearAll() {
+        context.recentStore.edit { prefs -> prefs.remove(KEY) }
+    }
 }

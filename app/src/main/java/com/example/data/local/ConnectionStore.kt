@@ -29,6 +29,12 @@ data class StoredConnection(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val liveSyncEnabled: Boolean = true
 ) {
+    /** Never let a decrypted key or cookie reach a log, crash report or screenshot. */
+    override fun toString(): String =
+        "StoredConnection(serverUrl=$serverUrl, authMode=$authMode, hasApiKey=${apiKey.isNotBlank()}, " +
+            "hasSessionCookie=${sessionCookie.isNotBlank()}, lastProjectRef=$lastProjectRef, " +
+            "themeMode=$themeMode, liveSyncEnabled=$liveSyncEnabled)"
+
     val hasCredentials: Boolean
         get() = serverUrl.isNotBlank() && when (authMode) {
             AuthMode.API_KEY -> apiKey.isNotBlank()

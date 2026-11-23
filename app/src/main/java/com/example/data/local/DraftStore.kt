@@ -49,4 +49,9 @@ class DraftStore(private val context: Context) {
             else prefs[issueDescKey(issueId)] = text
         }
     }
+
+    /** Drops every draft; used when an account signs out. */
+    suspend fun clearAll() {
+        context.draftStore.edit { it.clear() }
+    }
 }
