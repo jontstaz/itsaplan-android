@@ -168,7 +168,8 @@ fun BoardScreen(
                     onToggleSearch = { showSearchBar = !showSearchBar },
                     onSetViewMode = onSetViewMode,
                     onOpenFilterSheet = onOpenFilterSheet,
-                    onRefresh = onRefresh
+                    onRefresh = onRefresh,
+                    kanbanAvailable = !forceListView
                 )
 
                 // Inline Search Bar
@@ -404,7 +405,7 @@ fun BoardScreen(
                 }
             }
 
-            !forceListView && state.boardViewMode == BoardViewMode.COMPACT -> {
+            state.boardViewMode == BoardViewMode.COMPACT -> {
                 CompactIssueList(
                     columns = columns,
                     issuesByColumn = issuesByColumn,

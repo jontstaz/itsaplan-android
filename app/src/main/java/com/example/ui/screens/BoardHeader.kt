@@ -52,7 +52,8 @@ internal fun BoardHeaderContent(
     onToggleSearch: () -> Unit,
     onSetViewMode: (BoardViewMode) -> Unit,
     onOpenFilterSheet: () -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    kanbanAvailable: Boolean
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val compact = maxWidth < 600.dp
@@ -77,7 +78,8 @@ internal fun BoardHeaderContent(
                     BoardHeaderActions(
                         state, showSearchBar, onOpenGlobalSearch, onToggleSearch,
                         onSetViewMode, onOpenFilterSheet, onRefresh,
-                        canRefresh = selectedProject != null && !state.isLoadingBoard
+                        canRefresh = selectedProject != null && !state.isLoadingBoard,
+                        kanbanAvailable = kanbanAvailable
                     )
                 }
             }
@@ -93,7 +95,8 @@ internal fun BoardHeaderContent(
                 BoardHeaderActions(
                     state, showSearchBar, onOpenGlobalSearch, onToggleSearch,
                     onSetViewMode, onOpenFilterSheet, onRefresh,
-                    canRefresh = selectedProject != null && !state.isLoadingBoard
+                    canRefresh = selectedProject != null && !state.isLoadingBoard,
+                    kanbanAvailable = kanbanAvailable
                 )
             }
         }
@@ -182,7 +185,8 @@ private fun RowScope.BoardHeaderActions(
     onSetViewMode: (BoardViewMode) -> Unit,
     onOpenFilterSheet: () -> Unit,
     onRefresh: () -> Unit,
-    canRefresh: Boolean
+    canRefresh: Boolean,
+    kanbanAvailable: Boolean
 ) {
     IconButton(onClick = onOpenGlobalSearch, modifier = Modifier.testTag("global_search_toggle")) {
         Icon(Icons.Rounded.TravelExplore, contentDescription = "Search all projects")
@@ -194,7 +198,7 @@ private fun RowScope.BoardHeaderActions(
         )
     }
     IconButton(
-        onClick = { onSetViewMode(state.boardViewMode.next()) },
+        onClick = { onSetViewMode(state.boardViewMode.next(kanbanAvailable)) },
         modifier = Modifier.testTag("board_view_mode_toggle")
     ) {
         Icon(

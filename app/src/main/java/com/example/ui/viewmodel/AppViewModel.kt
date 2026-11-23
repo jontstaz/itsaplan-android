@@ -38,11 +38,11 @@ enum class BoardViewMode {
     /** One line per issue under collapsible status headers. */
     COMPACT;
 
-    /** Board → List → Compact → Board. */
-    fun next(): BoardViewMode = when (this) {
+    /** Board → List → Compact → Board, or List ↔ Compact in a narrow pane. */
+    fun next(kanbanAvailable: Boolean = true): BoardViewMode = when (this) {
         KANBAN -> LIST
         LIST -> COMPACT
-        COMPACT -> KANBAN
+        COMPACT -> if (kanbanAvailable) KANBAN else LIST
     }
 }
 
