@@ -58,6 +58,7 @@ fun HomeScreen(
     onOpenIssue: (issueId: Int, projectRef: String?) -> Unit,
     onOpenComment: (issueId: Int, projectRef: String?, commentId: Int) -> Unit,
     onShowMessage: (String) -> Unit,
+    onUnreadChanged: () -> Unit,
     windowSize: com.example.ui.layout.AppWindowSize
 ) {
     var section by rememberSaveable { mutableStateOf(HomeSection.ASSIGNED) }
@@ -136,7 +137,7 @@ fun HomeScreen(
 
                 HomeSection.ACTIVITY -> InboxScreen(
                     viewModel = inboxViewModel,
-                    onUnreadChanged = {},
+                    onUnreadChanged = onUnreadChanged,
                     onOpenIssue = onOpenIssue,
                     onOpenComment = onOpenComment,
                     onShowMessage = onShowMessage,

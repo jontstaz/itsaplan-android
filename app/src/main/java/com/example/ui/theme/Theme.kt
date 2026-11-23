@@ -38,7 +38,9 @@ private val DarkColorScheme = darkColorScheme(
     surfaceContainer = Slate850,
     surfaceContainerHigh = Slate800,
     surfaceContainerHighest = Slate700,
-    outline = Slate700,
+    // Control boundaries need 3:1 against the surface behind them. Slate700 measured
+    // 1.48:1 on Slate900; SlateOutline measures 3.34:1.
+    outline = SlateOutline,
     outlineVariant = Color(0xFF222B40)
 )
 
@@ -70,7 +72,9 @@ private val LightColorScheme = lightColorScheme(
     surfaceContainer = AlabasterContainer,
     surfaceContainerHigh = Color(0xFFE9EEF5),
     surfaceContainerHighest = AlabasterContainerHigh,
-    outline = Color(0xFFCBD5E1),
+    // Was #CBD5E1 (1.48:1 on white). InkOutline measures 3.43:1 and still reads as a
+    // hairline rather than a rule.
+    outline = InkOutline,
     outlineVariant = Color(0xFFE2E8F0)
 )
 

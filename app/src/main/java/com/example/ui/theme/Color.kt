@@ -27,6 +27,9 @@ val AlabasterSurface = Color(0xFFFFFFFF)
 val AlabasterContainer = Color(0xFFF1F5F9)
 val AlabasterContainerHigh = Color(0xFFE2E8F0)
 val InkPrimary = Color(0xFF0F172A)
+// Outline tokens that clear the 3:1 non-text contrast threshold on their scheme's surface.
+val SlateOutline = Color(0xFF5A6B85)
+val InkOutline = Color(0xFF7C8CA1)
 val InkSecondary = Color(0xFF475569)
 
 // Semantic Status & Priority Tokens

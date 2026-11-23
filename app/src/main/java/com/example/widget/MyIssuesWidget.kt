@@ -38,6 +38,7 @@ class MyIssuesWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val cache = WidgetCache(context)
         val items = cache.loadMyIssues()
+        val loaded = cache.hasLoaded()
         val openCount = items.size
 
         provideContent {
@@ -70,7 +71,10 @@ class MyIssuesWidget : GlanceAppWidget() {
                     if (items.isEmpty()) {
                         Box(modifier = GlanceModifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text(
-                                text = "No open issues assigned to you.",
+                                // Distinguish "not synced yet" from a genuine empty result,
+                                // so a freshly added widget does not claim you have no work.
+                                text = if (loaded) "No open issues assigned to you."
+                                else "Loading your issues… open the app to sync.",
                                 style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant)
                             )
                         }

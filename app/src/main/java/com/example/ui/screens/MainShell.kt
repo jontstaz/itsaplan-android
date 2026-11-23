@@ -451,6 +451,7 @@ private fun MainTabContent(
                 onOpenIssue = onOpenIssue,
                 onOpenComment = onOpenComment,
                 onShowMessage = { appViewModel.showSnackbar(it) },
+                onUnreadChanged = { appViewModel.refreshUnreadCount() },
                 windowSize = windowSize
             )
         }

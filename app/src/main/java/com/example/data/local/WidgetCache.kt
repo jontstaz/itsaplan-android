@@ -59,6 +59,10 @@ class WidgetCache(private val context: Context) {
     }
 
     /** Empties the widget cache so a signed-out device shows no account titles. */
+    /** False until the app has written the cache once, so a new widget can say so. */
+    suspend fun hasLoaded(): Boolean =
+        context.widgetStore.data.first().contains(KEY_MY_ISSUES)
+
     suspend fun clear() {
         context.widgetStore.edit { prefs -> prefs.remove(KEY_MY_ISSUES) }
     }

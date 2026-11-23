@@ -75,7 +75,8 @@ internal fun BoardHeaderContent(
                 ) {
                     BoardHeaderActions(
                         state, showSearchBar, onOpenGlobalSearch, onToggleSearch,
-                        onSetViewMode, onOpenFilterSheet, onRefresh
+                        onSetViewMode, onOpenFilterSheet, onRefresh,
+                        canRefresh = selectedProject != null && !state.isLoadingBoard
                     )
                 }
             }
@@ -90,7 +91,8 @@ internal fun BoardHeaderContent(
                 FavoriteProjectButton(selectedProject, onToggleFavorite)
                 BoardHeaderActions(
                     state, showSearchBar, onOpenGlobalSearch, onToggleSearch,
-                    onSetViewMode, onOpenFilterSheet, onRefresh
+                    onSetViewMode, onOpenFilterSheet, onRefresh,
+                    canRefresh = selectedProject != null && !state.isLoadingBoard
                 )
             }
         }
@@ -178,7 +180,8 @@ private fun RowScope.BoardHeaderActions(
     onToggleSearch: () -> Unit,
     onSetViewMode: (BoardViewMode) -> Unit,
     onOpenFilterSheet: () -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    canRefresh: Boolean
 ) {
     IconButton(onClick = onOpenGlobalSearch, modifier = Modifier.testTag("global_search_toggle")) {
         Icon(Icons.Rounded.TravelExplore, contentDescription = "Search all projects")
@@ -211,7 +214,11 @@ private fun RowScope.BoardHeaderActions(
             Icon(Icons.Rounded.FilterList, contentDescription = "Filter issues")
         }
     }
-    IconButton(onClick = onRefresh, modifier = Modifier.testTag("board_refresh_button")) {
+    IconButton(
+        onClick = onRefresh,
+        enabled = canRefresh,
+        modifier = Modifier.testTag("board_refresh_button")
+    ) {
         Icon(Icons.Rounded.Refresh, contentDescription = "Refresh board")
     }
 }
