@@ -87,7 +87,7 @@ class DocsViewModel(
         }
     }
 
-    fun saveDocument(title: String, content: String) {
+    fun saveDocument(title: String, content: String, onSaved: () -> Unit = {}) {
         val projectRef = _uiState.value.projectRef
         val doc = _uiState.value.activeDocument ?: return
         viewModelScope.launch {
@@ -102,6 +102,7 @@ class DocsViewModel(
                 onSuccess = { updated ->
                     _uiState.update { it.copy(activeDocument = updated, isSaving = false) }
                     postMessage("Document saved")
+                    onSaved()
                     loadDocuments(projectRef)
                 },
                 onFailure = { err ->

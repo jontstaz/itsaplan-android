@@ -531,7 +531,7 @@ fun CommentComposerBar(
     issueId: Int,
     draftStore: com.example.data.local.DraftStore,
     modifier: Modifier = Modifier,
-    onSend: (String) -> Unit
+    onSend: (body: String, onSent: () -> Unit) -> Unit
 ) {
     var text by remember { mutableStateOf("") }
     var showMentions by remember { mutableStateOf(false) }
@@ -627,10 +627,13 @@ fun CommentComposerBar(
                 IconButton(
                     onClick = {
                         val trimmed = text.trim()
-                        if (trimmed.isNotEmpty()) {
-                            onSend(trimmed)
-                            text = ""
-                            showPreview = false
+                        if (trimmed.isNotEmpty() && !isSubmitting) {
+                            // Keep the text (and its autosaved draft) until the server
+                            // accepts it, so a failed send never loses what was typed.
+                            onSend(trimmed) {
+                                text = ""
+                                showPreview = false
+                            }
                         }
                     },
                     enabled = text.isNotBlank() && !isSubmitting,

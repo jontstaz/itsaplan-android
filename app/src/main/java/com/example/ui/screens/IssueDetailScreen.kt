@@ -326,10 +326,11 @@ fun IssueDetailScreen(
                     issueId = issueId,
                     draftStore = remember { com.example.data.local.DraftStore(context.applicationContext) },
                     modifier = Modifier.imePadding(),
-                    onSend = { body ->
+                    onSend = { body, onSent ->
                         viewModel.postComment(body, replyToCommentId) {
                             replyToCommentId = null
                             replyToPreview = null
+                            onSent()
                         }
                     }
                 )

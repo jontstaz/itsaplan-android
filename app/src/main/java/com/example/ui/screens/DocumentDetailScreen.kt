@@ -161,13 +161,14 @@ fun DocumentDetailScreen(
                         if (isEditing) {
                             IconButton(
                                 onClick = {
-                                    viewModel.saveDocument(editedTitle, editedContent)
-                                    doc.id.let { id ->
-                                        scope.launch {
-                                            draftStore.saveDocDraft(id, "")
+                                    // Stay in the editor, draft included, until the server
+                                    // accepts the save; otherwise a failure loses the text.
+                                    viewModel.saveDocument(editedTitle, editedContent) {
+                                        doc.id.let { id ->
+                                            scope.launch { draftStore.saveDocDraft(id, "") }
                                         }
+                                        isEditing = false
                                     }
-                                    isEditing = false
                                 },
                                 enabled = !state.isSaving
                             ) {

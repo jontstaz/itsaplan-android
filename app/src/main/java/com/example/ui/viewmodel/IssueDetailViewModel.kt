@@ -123,6 +123,10 @@ class IssueDetailViewModel(
             val attachments = attachmentsDef.await().getOrElse { emptyList() }
             val runs = runsDef.await().getOrNull()?.items ?: emptyList()
 
+            // A slower request for a previously opened issue must not repaint the
+            // screen the user has since navigated to.
+            if (_uiState.value.issueId != issueId) return@launch
+
             _uiState.update {
                 it.copy(
                     issueId = issueId,

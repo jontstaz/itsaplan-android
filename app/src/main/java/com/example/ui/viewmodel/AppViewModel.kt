@@ -307,6 +307,7 @@ class AppViewModel(
                 else Result.success(emptyList())
             }
 
+            val expectedRef = project.routeKey
             val boardRes = boardDeferred.await()
             val issuesRes = issuesDeferred.await()
             val cyclesRes = cyclesDeferred.await()
@@ -315,6 +316,8 @@ class AppViewModel(
                 onSuccess = { scaffold ->
                     // Keep whatever we already have for the parts that failed: a partial
                     // refresh must not look like an empty board.
+                    // Ignore a load that landed after the user switched projects.
+                    if (_uiState.value.selectedProject?.routeKey != expectedRef) return@coroutineScope false
                     _uiState.update { current ->
                         current.copy(
                             projectBoard = scaffold,
