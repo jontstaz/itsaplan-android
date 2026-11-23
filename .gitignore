@@ -16,3 +16,15 @@
 local.properties
 .env
 debug.keystore
+
+# Release signing material (never commit)
+my-upload-key.jks
+*.jks
+signing.env
+
+# demo stuff
+scripts/
+.pi/
+
+# Build outputs kept out of git
+dist/

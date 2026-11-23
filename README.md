@@ -154,6 +154,28 @@ app/src/main/java/com/example/
   disabled per-project (e.g. Cycles, Docs) are respected where the API reports them, but not
   every administrative feature of It's a Plan is exposed from this client.
 
+## Building a release
+
+Release builds are signed with a local keystore that is deliberately not committed. To build one,
+create `signing.env` alongside the project with:
+
+```bash
+export KEYSTORE_PATH="$PWD/my-upload-key.jks"
+export STORE_PASSWORD="…"
+export KEY_PASSWORD="…"
+```
+
+Then:
+
+```bash
+source signing.env
+./gradlew :app:assembleRelease
+```
+
+The signed APK lands at `app/build/outputs/apk/release/app-release.apk`. Keep the keystore and
+passwords backed up: Android will not install an update signed with a different key, so losing them
+means users have to uninstall and reinstall.
+
 ## Contributing
 
 Issues and pull requests are welcome. This is a small side project, so please keep changes
