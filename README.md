@@ -42,7 +42,8 @@ foldables (unfolded two-pane layouts on wide screens).
   unfolded book-style foldables), with width-capped reading columns so text doesn't stretch
   edge-to-edge on near-square unfolded displays.
 - **Flexible auth** — sign in with a personal API key or with email/username + password
-  (session cookie), against any server URL you control.
+  (session cookie), against any HTTPS server URL you control (see
+  [Connecting to a local-only instance](#connecting-to-a-local-only-instance)).
 
 ## Screenshots
 
@@ -97,6 +98,38 @@ runtime on the connect screen and stored locally on the device (see
 `GEMINI_API_KEY` placeholder inherited from the AI Studio scaffold this project started from; it
 is unused by the app's core functionality and can be ignored.
 
+### Connecting to a local-only instance
+
+The app refuses plain HTTP for anything except the loopback and emulator hosts, because the
+request carries your API key or session cookie:
+
+| Address | Allowed |
+| --- | --- |
+| `https://…` | Yes, any host |
+| `http://localhost`, `http://127.0.0.1`, `http://10.0.2.2` | Yes — local development and the Android emulator |
+| `http://192.168.x.x`, `http://10.x.x.x`, any other `http://` | No |
+
+That means a LAN-only instance served over plain HTTP, such as `http://192.168.1.5:3000`, is
+rejected on purpose. Your options are:
+
+1. **Give it TLS** (recommended). Put the instance behind a reverse proxy with a trusted
+   certificate — Caddy, Traefik and nginx all obtain Let's Encrypt certificates automatically if
+   the host is reachable from the internet, including through a dynamic-DNS name.
+2. **Use a tunnel.** Cloudflare Tunnel, Tailscale Serve or ngrok expose the LAN instance on an
+   `https://` address without opening a port or changing the server.
+3. **Build your own APK** with a wider allowlist. Two places must agree:
+   - `ApiClientManager.isLocalDevelopmentHost()` in
+     `app/src/main/java/com/example/data/remote/ApiClientManager.kt`, which decides what the app
+     will connect to;
+   - `app/src/main/res/xml/network_security_config.xml`, which decides what Android permits. Add
+     a `<domain>` entry per host — the platform config has no CIDR support, so private ranges
+     have to be listed individually.
+
+Self-signed certificates are not trusted today: the app trusts the system CA store only, and
+Android does not treat user-installed CAs as system CAs from API 24 onward. A self-signed
+instance therefore needs either a publicly trusted certificate (options 1–2) or an APK built with
+`<certificates src="user" />` added to that same file, which is a deliberate security trade-off.
+
 ## Architecture
 
 - **UI:** Jetpack Compose, Material 3, single-activity with Compose Navigation handled by hand
@@ -140,8 +173,10 @@ app/src/main/java/com/example/
 - No analytics, crash reporting, or third-party telemetry SDKs are included.
 - `android:allowBackup="false"` is set, so credentials are not included in Android's
   auto-backup.
-- Self-signed or plain-HTTP servers are supported for local/LAN development; the app warns when
-  connecting over unencrypted HTTP to anything other than localhost.
+- Plain HTTP is refused except for `localhost`, `127.0.0.1` and the emulator host `10.0.2.2`, so
+  credentials are never sent unencrypted. Self-signed certificates are not trusted; see
+  [Connecting to a local-only instance](#connecting-to-a-local-only-instance) for the
+  alternatives.
 
 ## Known limitations
 
