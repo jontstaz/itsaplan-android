@@ -187,6 +187,7 @@ fun IssueDetailScreen(
 
     var showMenu by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var deleteTargetId by remember { mutableStateOf<Int?>(null) }
     var showEditContentDialog by remember { mutableStateOf(false) }
     var activePicker by remember { mutableStateOf<MetadataPicker?>(null) }
     var activeCustomField by remember { mutableStateOf<CustomFieldDto?>(null) }
@@ -308,7 +309,11 @@ fun IssueDetailScreen(
                                 DropdownMenuItem(
                                     text = { Text("Delete Issue", color = Coral500) },
                                     leadingIcon = { Icon(Icons.Rounded.Delete, contentDescription = null, tint = Coral500) },
-                                    onClick = { showMenu = false; showDeleteConfirm = true }
+                                    onClick = {
+                                        showMenu = false
+                                        deleteTargetId = issue?.id
+                                        showDeleteConfirm = true
+                                    }
                                 )
                             }
                         }
@@ -726,22 +731,27 @@ fun IssueDetailScreen(
         )
     }
 
-    if (showDeleteConfirm && issue != null) {
+    val pendingDeleteId = deleteTargetId
+    if (showDeleteConfirm && pendingDeleteId != null) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete ${issue.identifier}?") },
+            title = { Text("Delete ${issue?.identifier ?: "#$pendingDeleteId"}?") },
             text = { Text("This permanently deletes the issue and its comments. This action cannot be undone.") },
             confirmButton = {
                 Button(
                     onClick = {
                         showDeleteConfirm = false
-                        viewModel.deleteIssue(onBoardDirty)
+                        deleteTargetId = null
+                        viewModel.deleteIssue(pendingDeleteId, onBoardDirty)
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Coral500)
                 ) { Text("Delete") }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    deleteTargetId = null
+                }) { Text("Cancel") }
             }
         )
     }

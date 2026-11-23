@@ -75,6 +75,10 @@ fun DocumentDetailScreen(
     var editedTitle by remember(doc?.id) { mutableStateOf(doc?.title.orEmpty()) }
     var editedContent by remember(doc?.id) { mutableStateOf(doc?.content.orEmpty()) }
     var showArchiveConfirm by remember { mutableStateOf(false) }
+    // Captured when the sheet opens, so switching documents behind it cannot redirect
+    // the confirmation to a different doc.
+    var archiveTarget by remember { mutableStateOf<com.example.data.model.DocumentDto?>(null) }
+    var docDraftRestored by remember(doc?.id) { mutableStateOf(false) }
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val draftStore = remember { com.example.data.local.DraftStore(context.applicationContext) }
@@ -86,13 +90,17 @@ fun DocumentDetailScreen(
         if (isEditing) {
             val draft = draftStore.loadDocDraft(id)
             if (draft.isNotBlank()) editedContent = draft
+            docDraftRestored = true
+        } else {
+            docDraftRestored = false
         }
     }
 
-    // Persist draft while editing.
-    LaunchedEffect(editedContent, isEditing, doc?.id) {
+    // Persist draft while editing, but only once the restore above has run, so the
+    // first autosave cannot blank the stored draft.
+    LaunchedEffect(editedContent, isEditing, doc?.id, docDraftRestored) {
         val id = doc?.id ?: return@LaunchedEffect
-        if (isEditing) {
+        if (isEditing && docDraftRestored) {
             draftStore.saveDocDraft(id, editedContent)
         }
     }
@@ -182,7 +190,10 @@ fun DocumentDetailScreen(
                             IconButton(onClick = { isEditing = true }) {
                                 Icon(Icons.Rounded.Edit, contentDescription = "Edit document")
                             }
-                            IconButton(onClick = { showArchiveConfirm = true }) {
+                            IconButton(onClick = {
+                                archiveTarget = doc
+                                showArchiveConfirm = true
+                            }) {
                                 Icon(Icons.Rounded.Archive, contentDescription = "Archive document")
                             }
                         }
@@ -304,15 +315,20 @@ fun DocumentDetailScreen(
         }
     }
 
-    if (showArchiveConfirm) {
+    val pendingArchive = archiveTarget
+    if (showArchiveConfirm && pendingArchive != null) {
         AlertDialog(
-            onDismissRequest = { showArchiveConfirm = false },
+            onDismissRequest = {
+                showArchiveConfirm = false
+                archiveTarget = null
+            },
             title = { Text("Archive document?") },
             text = { Text("This document and its subpages will be archived. You can restore it later from an archived view.") },
             confirmButton = {
                 Button(onClick = {
                     showArchiveConfirm = false
-                    viewModel.archiveDocument(onBack)
+                    archiveTarget = null
+                    viewModel.archiveDocument(pendingArchive, onBack)
                 }) { Text("Archive") }
             },
             dismissButton = {

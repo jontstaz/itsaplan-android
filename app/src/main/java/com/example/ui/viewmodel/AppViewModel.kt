@@ -89,6 +89,8 @@ class AppViewModel(
     val uiState: StateFlow<AppUiState> = _uiState.asStateFlow()
 
     private var syncJob: Job? = null
+    /** One in-flight create at a time: a double tap must not post the same issue twice. */
+    private var createIssueJob: Job? = null
     private var globalSearchJob: Job? = null
     private var lastRevs: Map<String, String> = emptyMap()
 
@@ -429,7 +431,8 @@ class AppViewModel(
         onSuccess: (Int) -> Unit
     ) {
         val project = _uiState.value.selectedProject ?: return
-        viewModelScope.launch {
+        if (createIssueJob?.isActive == true) return
+        createIssueJob = viewModelScope.launch {
             repository.createIssue(
                 projectRef = project.routeKey,
                 columnId = columnId,

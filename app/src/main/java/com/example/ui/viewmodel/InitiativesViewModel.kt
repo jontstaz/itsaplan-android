@@ -69,6 +69,8 @@ class InitiativesViewModel(
     ) {
         val projectRef = _uiState.value.projectRef
         if (projectRef.isBlank() || title.isBlank()) return
+        // Ignore a second tap while the first create is in flight.
+        if (_uiState.value.isSaving) return
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true) }
             // New initiatives start as planned: that is the state the roadmap uses for

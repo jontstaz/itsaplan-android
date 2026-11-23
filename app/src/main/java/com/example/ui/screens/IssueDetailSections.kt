@@ -536,13 +536,17 @@ fun CommentComposerBar(
     var text by remember { mutableStateOf("") }
     var showMentions by remember { mutableStateOf(false) }
     var showPreview by remember { mutableStateOf(false) }
+    // Autosave must not run against the initial empty string: it would overwrite the
+    // stored draft before the restore below has had a chance to read it.
+    var draftRestored by remember(issueId) { mutableStateOf(false) }
 
     LaunchedEffect(issueId) {
         text = draftStore.loadCommentDraft(issueId)
+        draftRestored = true
     }
 
-    LaunchedEffect(text, issueId) {
-        draftStore.saveCommentDraft(issueId, text)
+    LaunchedEffect(text, issueId, draftRestored) {
+        if (draftRestored) draftStore.saveCommentDraft(issueId, text)
     }
 
     Surface(

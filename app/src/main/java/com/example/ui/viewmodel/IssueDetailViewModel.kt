@@ -239,14 +239,16 @@ class IssueDetailViewModel(
         }
     }
 
-    fun deleteIssue(onBoardDirty: () -> Unit) {
-        val issueId = _uiState.value.issueId
-        if (issueId <= 0) return
+    /** Deletes the issue the confirmation was opened for, not the one now on screen. */
+    fun deleteIssue(targetIssueId: Int, onBoardDirty: () -> Unit) {
+        if (targetIssueId <= 0) return
         viewModelScope.launch {
-            repository.deleteIssue(issueId).fold(
+            repository.deleteIssue(targetIssueId).fold(
                 onSuccess = {
                     onBoardDirty()
-                    _uiState.update { it.copy(deleted = true) }
+                    if (_uiState.value.issueId == targetIssueId) {
+                        _uiState.update { it.copy(deleted = true) }
+                    }
                 },
                 onFailure = { err -> postMessage(err.message ?: "Delete failed.") }
             )

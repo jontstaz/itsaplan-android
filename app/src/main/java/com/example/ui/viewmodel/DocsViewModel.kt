@@ -88,6 +88,7 @@ class DocsViewModel(
     }
 
     fun saveDocument(title: String, content: String, onSaved: () -> Unit = {}) {
+        if (_uiState.value.isSaving) return
         val projectRef = _uiState.value.projectRef
         val doc = _uiState.value.activeDocument ?: return
         viewModelScope.launch {
@@ -113,14 +114,17 @@ class DocsViewModel(
         }
     }
 
-    fun archiveDocument(onDone: () -> Unit = {}) {
+    /**
+     * Archives [target] — the document the confirmation was opened for, not whatever is
+     * active by the time the user confirms.
+     */
+    fun archiveDocument(target: com.example.data.model.DocumentDto, onDone: () -> Unit = {}) {
         val projectRef = _uiState.value.projectRef
-        val doc = _uiState.value.activeDocument ?: return
         viewModelScope.launch {
-            repository.archiveDocument(projectRef, doc.id, doc.version).fold(
+            repository.archiveDocument(projectRef, target.id, target.version).fold(
                 onSuccess = {
                     postMessage("Document archived")
-                    closeDocument()
+                    if (_uiState.value.activeDocument?.id == target.id) closeDocument()
                     loadDocuments(projectRef)
                     onDone()
                 },
