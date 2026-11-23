@@ -62,6 +62,11 @@ import com.example.data.model.ProjectBoardResponse
 import com.example.data.model.ProjectListItem
 import com.example.data.model.TeamDto
 import com.example.ui.components.ALL_PRIORITIES
+import com.example.ui.components.isValidMinutes
+import com.example.ui.components.isoDateError
+import com.example.ui.components.parseDecimalOrNull
+import com.example.ui.components.parseIsoDateOrNull
+import com.example.ui.components.parseMinutesOrNull
 import com.example.ui.components.UserAvatar
 import com.example.ui.components.priorityLabel
 import com.example.ui.components.stateTypeColor
@@ -580,6 +585,8 @@ fun CreateIssueSheet(
     var delegateUserId by remember { mutableStateOf<String?>(null) }
     var cycleId by remember { mutableStateOf<Int?>(cycles.firstOrNull { it.status == "active" }?.id) }
     var dueDate by remember { mutableStateOf("") }
+    var dateError by remember { mutableStateOf<String?>(null) }
+    var numberError by remember { mutableStateOf<String?>(null) }
     var estimatePoints by remember { mutableStateOf("") }
     var estimateMinutes by remember { mutableStateOf("") }
     val selectedLabels = remember { mutableStateListOf<Int>() }
@@ -742,18 +749,29 @@ fun CreateIssueSheet(
             ) {
                 OutlinedTextField(
                     value = dueDate,
-                    onValueChange = { dueDate = it },
+                    onValueChange = {
+                        dueDate = it
+                        dateError = isoDateError(it)
+                    },
                     label = { Text("Due Date") },
                     placeholder = { Text("YYYY-MM-DD") },
                     singleLine = true,
+                    isError = dateError != null,
+                    supportingText = dateError?.let { { Text(it) } },
                     modifier = Modifier.weight(1f)
                 )
                 if (scaffold.project.pointsEstimateEnabled) {
                     OutlinedTextField(
                         value = estimatePoints,
-                        onValueChange = { estimatePoints = it },
+                        onValueChange = {
+                            estimatePoints = it
+                            numberError = if (it.isBlank() || it.replace(',', '.').toDoubleOrNull() != null) null
+                            else "Enter a number."
+                        },
                         label = { Text("Points") },
                         singleLine = true,
+                        isError = numberError != null,
+                        supportingText = numberError?.let { { Text(it) } },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         modifier = Modifier.weight(0.7f)
                     )
@@ -761,9 +779,14 @@ fun CreateIssueSheet(
                 if (scaffold.project.timeEstimateEnabled) {
                     OutlinedTextField(
                         value = estimateMinutes,
-                        onValueChange = { estimateMinutes = it },
+                        onValueChange = {
+                            estimateMinutes = it
+                            numberError = if (isValidMinutes(it)) null else "Enter whole minutes."
+                        },
                         label = { Text("Est (min)") },
                         singleLine = true,
+                        isError = numberError != null,
+                        supportingText = numberError?.let { { Text(it) } },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(0.7f)
                     )
@@ -780,6 +803,13 @@ fun CreateIssueSheet(
                 }
                 Button(
                     onClick = {
+                        val date = parseIsoDateOrNull(dueDate)
+                        var bad = false
+                        val points = parseDecimalOrNull(estimatePoints) { numberError = it; bad = true }
+                        val minutes = parseMinutesOrNull(estimateMinutes) { numberError = it; bad = true }
+                        dateError = isoDateError(dueDate)
+                        if (dateError != null) bad = true
+                        if (bad) return@Button
                         onCreate(
                             columnId,
                             title,
@@ -789,13 +819,14 @@ fun CreateIssueSheet(
                             assigneeUserId,
                             delegateUserId,
                             priority,
-                            estimatePoints.toDoubleOrNull(),
-                            estimateMinutes.toIntOrNull(),
-                            dueDate.ifBlank { null },
+                            points,
+                            minutes,
+                            date,
                             selectedLabels.toList()
                         )
                     },
-                    enabled = title.isNotBlank() && columnId > 0,
+                    enabled = title.isNotBlank() && columnId > 0 &&
+                        dateError == null && numberError == null,
                     modifier = Modifier
                         .weight(1.4f)
                         .testTag("create_issue_submit_button")

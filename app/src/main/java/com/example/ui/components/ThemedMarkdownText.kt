@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.viewinterop.AndroidView
 import io.noties.markwon.AbstractMarkwonPlugin
+import io.noties.markwon.MarkwonVisitor
 import io.noties.markwon.Markwon
 import io.noties.markwon.core.MarkwonTheme
 import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
@@ -22,6 +23,7 @@ import io.noties.markwon.ext.tasklist.TaskListPlugin
 import io.noties.markwon.html.HtmlPlugin
 import io.noties.markwon.image.coil.CoilImagesPlugin
 import io.noties.markwon.linkify.LinkifyPlugin
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 /**
  * Theme-aware Markdown renderer built directly on Markwon so we can override
@@ -34,7 +36,15 @@ fun ThemedMarkdownText(
     modifier: Modifier = Modifier,
     style: TextStyle = MaterialTheme.typography.bodyMedium,
     linkColor: Color = MaterialTheme.colorScheme.primary,
-    isTextSelectable: Boolean = true
+    isTextSelectable: Boolean = true,
+    /**
+     * Host of the configured itsaplan server. Images served by it are shown; images on
+     * any other host are not fetched, so reading a comment cannot tell a third-party
+     * server (or a tracking pixel) that you opened it.
+     */
+    trustedImageHost: String? = com.example.data.remote.ApiClientManager.currentServerHost(),
+    /** Escape hatch for users who accept third-party image loading. */
+    loadUntrustedImages: Boolean = false
 ) {
     val context = LocalContext.current
     val textColor = style.color.takeIf { it != Color.Unspecified }
@@ -48,7 +58,8 @@ fun ThemedMarkdownText(
 
     val markwon = remember(
         linkColor, textColor, fontSizeSp,
-        codeBlockBg, codeBlockTextColor, inlineCodeBg, inlineCodeTextColor
+        codeBlockBg, codeBlockTextColor, inlineCodeBg, inlineCodeTextColor,
+        trustedImageHost, loadUntrustedImages
     ) {
         Markwon.builder(context)
             .usePlugin(CoilImagesPlugin.create(context))
@@ -86,7 +97,46 @@ fun ThemedMarkdownText(
             tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSizeSp)
             tv.setTextColor(textColor.toArgb())
             tv.setLinkTextColor(linkColor.toArgb())
-            markwon.setMarkdown(tv, markdown)
+            markwon.setMarkdown(tv, sanitizeImages(markdown, trustedImageHost, loadUntrustedImages))
         }
     )
+}
+
+private val IMAGE = Regex("""!\[([^\]]*)]\(([^)\s]+)(?:\s+"[^"]*")?\)""")
+
+/**
+ * Replaces image links that would make the device contact a third-party host with plain
+ * text, so simply reading a comment or document cannot disclose that it was opened (or
+ * fetch a tracking pixel). Links to the configured server, and relative links, are kept.
+ * Fenced code blocks are left untouched so documented markup survives.
+ */
+internal fun sanitizeImages(
+    markdown: String,
+    trustedImageHost: String?,
+    loadUntrusted: Boolean
+): String {
+    if (loadUntrusted) return markdown
+    val parts = markdown.split("```")
+    return parts.mapIndexed { index, part ->
+        if (index % 2 == 1) part
+        else IMAGE.replace(part) { match ->
+            val alt = match.groupValues[1]
+            val destination = match.groupValues[2]
+            if (isTrustedImage(destination, trustedImageHost)) match.value
+            else if (alt.isNotBlank()) "[image: $alt]" else "[image]"
+        }
+    }.joinToString("```")
+}
+
+/**
+ * True for relative links and for absolute links on the configured server; false for any
+ * other host, which would be a third-party request made just by reading the page.
+ */
+internal fun isTrustedImage(destination: String, trustedHost: String?): Boolean {
+    if (destination.isBlank()) return false
+    if (!destination.startsWith("http://", true) && !destination.startsWith("https://", true)) {
+        return true
+    }
+    val host = destination.toHttpUrlOrNull()?.host ?: return false
+    return trustedHost != null && host.equals(trustedHost, ignoreCase = true)
 }

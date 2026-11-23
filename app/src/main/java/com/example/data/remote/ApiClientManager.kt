@@ -75,6 +75,7 @@ class ApiClientManager {
             ?: throw IllegalArgumentException("Invalid server URL. Use http:// or https://")
 
         requireAcceptableTransport(normalized)
+        configuredHost = normalized.toHttpUrlOrNull()?.host
         val baseChanged = normalized != currentBaseUrl
         currentBaseUrl = normalized
         credentialOrigin = if (authMode == AuthMode.NONE) "" else originOf(normalized)
@@ -288,6 +289,16 @@ class ApiClientManager {
     }
 
     companion object {
+        /**
+         * Host of the server the app is configured against. Markdown rendering uses it to
+         * decide which images may be fetched without a third-party request.
+         */
+        @Volatile
+        var configuredHost: String? = null
+            private set
+
+        fun currentServerHost(): String? = configuredHost
+
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
 
         /**

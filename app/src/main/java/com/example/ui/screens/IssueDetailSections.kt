@@ -86,6 +86,11 @@ import com.example.data.model.ProjectBoardResponse
 import com.example.ui.components.ALL_PRIORITIES
 import com.example.ui.components.IdentifierChip
 import com.example.ui.components.UserAvatar
+import com.example.ui.components.isValidMinutes
+import com.example.ui.components.isoDateError
+import com.example.ui.components.parseDecimalOrNull
+import com.example.ui.components.parseIsoDateOrNull
+import com.example.ui.components.parseMinutesOrNull
 import com.example.ui.components.formatMinutes
 import com.example.ui.components.formatRelativeTime
 import com.example.ui.components.priorityLabel
@@ -930,6 +935,10 @@ fun MetadataPickerDialog(
             var dueDate by remember { mutableStateOf(issue.dueDate?.take(10).orEmpty()) }
             var points by remember { mutableStateOf(issue.estimatePoints?.toString().orEmpty()) }
             var estMinutes by remember { mutableStateOf(issue.estimateMinutes?.toString().orEmpty()) }
+            var startError by remember { mutableStateOf<String?>(null) }
+            var dueError by remember { mutableStateOf<String?>(null) }
+            var pointsError by remember { mutableStateOf<String?>(null) }
+            var minutesError by remember { mutableStateOf<String?>(null) }
 
             AlertDialog(
                 onDismissRequest = onDismiss,
@@ -938,32 +947,47 @@ fun MetadataPickerDialog(
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         OutlinedTextField(
                             value = startDate,
-                            onValueChange = { startDate = it },
+                            onValueChange = { startDate = it; startError = isoDateError(it) },
                             label = { Text("Start Date (YYYY-MM-DD)") },
                             singleLine = true,
+                            isError = startError != null,
+                            supportingText = startError?.let { { Text(it) } },
                             modifier = Modifier.fillMaxWidth()
                         )
                         OutlinedTextField(
                             value = dueDate,
-                            onValueChange = { dueDate = it },
+                            onValueChange = { dueDate = it; dueError = isoDateError(it) },
                             label = { Text("Due Date (YYYY-MM-DD)") },
                             singleLine = true,
+                            isError = dueError != null,
+                            supportingText = dueError?.let { { Text(it) } },
                             modifier = Modifier.fillMaxWidth()
                         )
                         OutlinedTextField(
                             value = points,
-                            onValueChange = { points = it },
+                            onValueChange = {
+                                points = it
+                                pointsError = if (it.isBlank() || it.replace(',', '.').toDoubleOrNull() != null) null
+                                else "Enter a number."
+                            },
                             label = { Text("Story Points") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             singleLine = true,
+                            isError = pointsError != null,
+                            supportingText = pointsError?.let { { Text(it) } },
                             modifier = Modifier.fillMaxWidth()
                         )
                         OutlinedTextField(
                             value = estMinutes,
-                            onValueChange = { estMinutes = it },
+                            onValueChange = {
+                                estMinutes = it
+                                minutesError = if (isValidMinutes(it)) null else "Enter whole minutes."
+                            },
                             label = { Text("Time Estimate (minutes)") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             singleLine = true,
+                            isError = minutesError != null,
+                            supportingText = minutesError?.let { { Text(it) } },
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -971,12 +995,18 @@ fun MetadataPickerDialog(
                 confirmButton = {
                     Button(
                         onClick = {
+                            startError = isoDateError(startDate)
+                            dueError = isoDateError(dueDate)
+                            var bad = startError != null || dueError != null
+                            val parsedPoints = parseDecimalOrNull(points) { pointsError = it; bad = true }
+                            val parsedMinutes = parseMinutesOrNull(estMinutes) { minutesError = it; bad = true }
+                            if (bad) return@Button
                             onApplyPatch(
                                 mapOf(
-                                    "startDate" to startDate.trim().ifBlank { null },
-                                    "dueDate" to dueDate.trim().ifBlank { null },
-                                    "estimatePoints" to points.trim().toDoubleOrNull(),
-                                    "estimateMinutes" to estMinutes.trim().toIntOrNull()
+                                    "startDate" to parseIsoDateOrNull(startDate),
+                                    "dueDate" to parseIsoDateOrNull(dueDate),
+                                    "estimatePoints" to parsedPoints,
+                                    "estimateMinutes" to parsedMinutes
                                 )
                             )
                         }
@@ -1133,6 +1163,7 @@ fun AddWorklogDialog(
     var minutes by remember { mutableStateOf("30") }
     var spentOn by remember { mutableStateOf(todayIsoDate()) }
     var note by remember { mutableStateOf("") }
+    var dateError by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1149,9 +1180,11 @@ fun AddWorklogDialog(
                 )
                 OutlinedTextField(
                     value = spentOn,
-                    onValueChange = { spentOn = it },
+                    onValueChange = { spentOn = it; dateError = isoDateError(it) },
                     label = { Text("Date (YYYY-MM-DD)") },
                     singleLine = true,
+                    isError = dateError != null,
+                    supportingText = dateError?.let { { Text(it) } },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
@@ -1164,10 +1197,16 @@ fun AddWorklogDialog(
             }
         },
         confirmButton = {
-            val mins = minutes.toIntOrNull() ?: 0
+            // A blank or invalid duration is reported, not quietly logged as zero.
+            val mins = minutes.toIntOrNull()
             Button(
-                onClick = { onSave(mins, spentOn.trim(), note.ifBlank { null }) },
-                enabled = mins > 0 && spentOn.length >= 10
+                onClick = {
+                    val date = parseIsoDateOrNull(spentOn)
+                    dateError = isoDateError(spentOn)
+                    if (mins == null || mins <= 0 || date == null) return@Button
+                    onSave(mins, date, note.ifBlank { null })
+                },
+                enabled = mins != null && mins > 0 && dateError == null
             ) { Text("Log") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
