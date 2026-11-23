@@ -20,6 +20,7 @@ import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarOutline
 import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.material.icons.rounded.ViewKanban
+import androidx.compose.material.icons.rounded.ViewStream
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
@@ -193,18 +194,20 @@ private fun RowScope.BoardHeaderActions(
         )
     }
     IconButton(
-        onClick = {
-            onSetViewMode(if (state.boardViewMode == BoardViewMode.KANBAN) BoardViewMode.LIST else BoardViewMode.KANBAN)
-        },
+        onClick = { onSetViewMode(state.boardViewMode.next()) },
         modifier = Modifier.testTag("board_view_mode_toggle")
     ) {
         Icon(
-            imageVector = if (state.boardViewMode == BoardViewMode.KANBAN) {
-                Icons.AutoMirrored.Rounded.FormatListBulleted
-            } else {
-                Icons.Rounded.ViewKanban
+            imageVector = when (state.boardViewMode) {
+                BoardViewMode.KANBAN -> Icons.AutoMirrored.Rounded.FormatListBulleted
+                BoardViewMode.LIST -> Icons.Rounded.ViewStream
+                BoardViewMode.COMPACT -> Icons.Rounded.ViewKanban
             },
-            contentDescription = "Toggle Kanban or List view"
+            contentDescription = when (state.boardViewMode) {
+                BoardViewMode.KANBAN -> "Kanban view. Switch to list."
+                BoardViewMode.LIST -> "List view. Switch to compact list."
+                BoardViewMode.COMPACT -> "Compact list view. Switch to Kanban."
+            }
         )
     }
     IconButton(onClick = onOpenFilterSheet, modifier = Modifier.testTag("board_filter_button")) {

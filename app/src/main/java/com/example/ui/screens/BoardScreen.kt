@@ -404,6 +404,16 @@ fun BoardScreen(
                 }
             }
 
+            !forceListView && state.boardViewMode == BoardViewMode.COMPACT -> {
+                CompactIssueList(
+                    columns = columns,
+                    issuesByColumn = issuesByColumn,
+                    onOpenIssue = onOpenIssue,
+                    onRequestMove = { moveTargetIssue = it },
+                    onQuickAdd = onQuickCreateInColumn
+                )
+            }
+
             else -> {
                 // Grouped List View
                 LazyColumn(

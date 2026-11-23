@@ -34,7 +34,16 @@ sealed interface AuthState {
 
 enum class BoardViewMode {
     KANBAN,
-    LIST
+    LIST,
+    /** One line per issue under collapsible status headers. */
+    COMPACT;
+
+    /** Board → List → Compact → Board. */
+    fun next(): BoardViewMode = when (this) {
+        KANBAN -> LIST
+        LIST -> COMPACT
+        COMPACT -> KANBAN
+    }
 }
 
 data class BoardFilters(
