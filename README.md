@@ -46,8 +46,21 @@ foldables (unfolded two-pane layouts on wide screens).
 
 ## Screenshots
 
-_Add screenshots here before publishing — e.g. Board, Issue Detail, Docs, and the unfolded
-two-pane layout._
+<p align="center">
+  <a href="screenshots/board-compact-dark.png"><img src="screenshots/readme/board.webp" width="190" alt="Kanban board" /></a>
+  <a href="screenshots/issue-detail-compact-dark.png"><img src="screenshots/readme/issue-detail.webp" width="190" alt="Issue detail" /></a>
+  <a href="screenshots/create-issue-compact-dark.png"><img src="screenshots/readme/create-issue.webp" width="190" alt="Creating an issue" /></a>
+  <a href="screenshots/tab-my-compact-dark.png"><img src="screenshots/readme/tab-my.webp" width="190" alt="My Issues" /></a>
+</p>
+<p align="center">
+  <a href="screenshots/tab-inbox-compact-dark.png"><img src="screenshots/readme/tab-inbox.webp" width="190" alt="Inbox" /></a>
+  <a href="screenshots/tab-cycles-compact-dark.png"><img src="screenshots/readme/tab-cycles.webp" width="190" alt="Cycles" /></a>
+  <a href="screenshots/tab-docs-compact-dark.png"><img src="screenshots/readme/tab-docs.webp" width="190" alt="Docs" /></a>
+  <a href="screenshots/tab-settings-compact-dark.png"><img src="screenshots/readme/tab-settings.webp" width="190" alt="Settings" /></a>
+</p>
+
+Every screen is captured in light and dark mode at phone width in [`screenshots/`](screenshots/).
+Regenerate them with [`screenshots/capture.sh`](screenshots/capture.sh).
 
 ## Requirements
 
