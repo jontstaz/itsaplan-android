@@ -318,14 +318,14 @@ fun IssueDetailScreen(
         },
         bottomBar = {
             if (issue != null) {
-                Box(modifier = Modifier.imePadding()) {
-                    CommentComposerBar(
-                        replyPreview = replyToPreview,
-                        onCancelReply = { replyToCommentId = null; replyToPreview = null },
-                        assignees = scaffold?.assignees.orEmpty(),
-                        isSubmitting = state.isMutating,
-                        issueId = issueId,
-                        draftStore = remember { com.example.data.local.DraftStore(context.applicationContext) },
+                CommentComposerBar(
+                    replyPreview = replyToPreview,
+                    onCancelReply = { replyToCommentId = null; replyToPreview = null },
+                    assignees = scaffold?.assignees.orEmpty(),
+                    isSubmitting = state.isMutating,
+                    issueId = issueId,
+                    draftStore = remember { com.example.data.local.DraftStore(context.applicationContext) },
+                    modifier = Modifier.imePadding(),
                     onSend = { body ->
                         viewModel.postComment(body, replyToCommentId) {
                             replyToCommentId = null
@@ -333,7 +333,6 @@ fun IssueDetailScreen(
                         }
                     }
                 )
-                }
             }
         }
     ) { paddingValues ->

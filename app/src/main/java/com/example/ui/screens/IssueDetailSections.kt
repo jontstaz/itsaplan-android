@@ -530,6 +530,7 @@ fun CommentComposerBar(
     isSubmitting: Boolean,
     issueId: Int,
     draftStore: com.example.data.local.DraftStore,
+    modifier: Modifier = Modifier,
     onSend: (String) -> Unit
 ) {
     var text by remember { mutableStateOf("") }
@@ -547,7 +548,8 @@ fun CommentComposerBar(
     Surface(
         tonalElevation = 4.dp,
         shadowElevation = 6.dp,
-        color = MaterialTheme.colorScheme.surface
+        color = MaterialTheme.colorScheme.surface,
+        modifier = modifier
     ) {
         Column(
             modifier = Modifier
