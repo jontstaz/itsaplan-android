@@ -106,7 +106,12 @@ fun HomeScreen(
     val issuesState by myIssuesViewModel.uiState.collectAsStateWithLifecycle()
     val inboxState by inboxViewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) { inboxViewModel.loadNotifications(reset = true) }
+    // The Overview reads counts from the other segments' view models, so prime them on
+    // entry; otherwise the header and Tasks tab read zero until you open those tabs.
+    LaunchedEffect(user.id) {
+        inboxViewModel.loadNotifications(reset = true)
+        onRefresh()
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         HomeHeader(
