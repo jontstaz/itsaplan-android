@@ -17,6 +17,7 @@ import com.example.data.repository.ServerProbeResult
 import com.example.ui.theme.ThemeMode
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -283,16 +284,19 @@ class AppViewModel(
         viewModelScope.launch {
             repository.saveLastProjectRef(project.routeKey)
         }
-        loadProjectBoard(project, silent = false)
+        viewModelScope.launch { loadProjectBoard(project, silent = false) }
     }
 
     fun refreshBoard(silent: Boolean = false) {
         val project = _uiState.value.selectedProject ?: return
-        loadProjectBoard(project, silent = silent)
+        viewModelScope.launch { loadProjectBoard(project, silent = silent) }
     }
 
-    private fun loadProjectBoard(project: ProjectListItem, silent: Boolean) {
-        viewModelScope.launch {
+    /**
+     * @return true when the board scaffold was refreshed, so the sync loop knows whether
+     * it may advance the revision marker for this project.
+     */
+    private suspend fun loadProjectBoard(project: ProjectListItem, silent: Boolean): Boolean = coroutineScope {
             if (!silent) {
                 _uiState.update { it.copy(isLoadingBoard = true, boardError = null) }
             }
@@ -309,13 +313,13 @@ class AppViewModel(
 
             boardRes.fold(
                 onSuccess = { scaffold ->
-                    val issues = issuesRes.getOrElse { emptyList() }
-                    val cycles = cyclesRes.getOrElse { emptyList() }
-                    _uiState.update {
-                        it.copy(
+                    // Keep whatever we already have for the parts that failed: a partial
+                    // refresh must not look like an empty board.
+                    _uiState.update { current ->
+                        current.copy(
                             projectBoard = scaffold,
-                            boardIssues = issues,
-                            projectCycles = cycles,
+                            boardIssues = issuesRes.getOrNull() ?: current.boardIssues,
+                            projectCycles = cyclesRes.getOrNull() ?: current.projectCycles,
                             isLoadingBoard = false,
                             boardError = null,
                             lastSyncedAtMs = System.currentTimeMillis()
@@ -324,6 +328,7 @@ class AppViewModel(
                     if (_uiState.value.boardFilters.showArchived) {
                         loadArchivedIssues(project.routeKey)
                     }
+                    true
                 },
                 onFailure = { err ->
                     handlePossibleAuthExpiry(err)
@@ -335,9 +340,9 @@ class AppViewModel(
                             )
                         }
                     }
+                    false
                 }
             )
-        }
     }
 
     private fun loadArchivedIssues(projectRef: String) {
@@ -544,16 +549,43 @@ class AppViewModel(
                     scopes.add("board:$projectId")
                 }
                 repository.getSyncRevs(scopes).onSuccess { newRevs ->
-                    if (lastRevs.isNotEmpty()) {
-                        val boardScope = projectId?.let { "board:$it" }
-                        if (boardScope != null && newRevs[boardScope] != null && newRevs[boardScope] != lastRevs[boardScope]) {
-                            refreshBoard(silent = true)
-                        }
-                        if (newRevs["inbox:all"] != null && newRevs["inbox:all"] != lastRevs["inbox:all"]) {
-                            refreshUnreadCount()
-                        }
+                    if (lastRevs.isEmpty()) {
+                        // First pass only establishes the baseline.
+                        lastRevs = newRevs
+                        return@onSuccess
                     }
-                    lastRevs = newRevs
+
+                    val boardScope = projectId?.let { "board:$it" }
+                    val next = lastRevs.toMutableMap()
+
+                    if (boardScope != null &&
+                        newRevs[boardScope] != null &&
+                        newRevs[boardScope] != lastRevs[boardScope]
+                    ) {
+                        val project = _uiState.value.selectedProject
+                        val refreshed = project != null && loadProjectBoard(project, silent = true)
+                        // Advance only on success, so a transient failure is retried on
+                        // the next tick instead of being skipped for good.
+                        if (refreshed) next[boardScope] = newRevs.getValue(boardScope)
+                    }
+
+                    val inboxRev = newRevs["inbox:all"]
+                    if (inboxRev != null && inboxRev != lastRevs["inbox:all"]) {
+                        val counted = repository.getUnreadCount().fold(
+                            onSuccess = { count ->
+                                _uiState.update { it.copy(unreadNotifications = count) }
+                                true
+                            },
+                            onFailure = { false }
+                        )
+                        if (counted) next["inbox:all"] = inboxRev
+                    }
+
+                    // Scopes we did not need to refresh are adopted as-is.
+                    newRevs.forEach { (scope, rev) ->
+                        if (!next.containsKey(scope)) next[scope] = rev
+                    }
+                    lastRevs = next
                 }
             }
         }

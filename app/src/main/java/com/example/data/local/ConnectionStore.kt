@@ -5,6 +5,9 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
+import kotlinx.coroutines.flow.catch
+import java.io.IOException
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.ui.theme.ThemeMode
@@ -54,7 +57,13 @@ class ConnectionStore(private val context: Context) {
         val LIVE_SYNC_ENABLED = booleanPreferencesKey("live_sync_enabled")
     }
 
-    val connectionFlow: Flow<StoredConnection> = context.dataStore.data.map { prefs ->
+    val connectionFlow: Flow<StoredConnection> = context.dataStore.data
+        // A corrupt or unreadable preferences file must not crash the startup collector;
+        // fall back to empty state so the user can sign in again.
+        .catch { error ->
+            if (error is IOException) emit(emptyPreferences()) else throw error
+        }
+        .map { prefs ->
         val mode = when (prefs[Keys.AUTH_MODE]) {
             AuthMode.API_KEY.name -> AuthMode.API_KEY
             AuthMode.SESSION.name -> AuthMode.SESSION
@@ -68,8 +77,10 @@ class ConnectionStore(private val context: Context) {
         StoredConnection(
             serverUrl = prefs[Keys.SERVER_URL].orEmpty(),
             authMode = mode,
-            apiKey = CryptoHelper.decrypt(prefs[Keys.ENC_API_KEY].orEmpty()),
-            sessionCookie = CryptoHelper.decrypt(prefs[Keys.ENC_SESSION_COOKIE].orEmpty()),
+            // null means the stored value could not be decrypted: treat it as absent
+            // rather than as a valid credential.
+            apiKey = CryptoHelper.decrypt(prefs[Keys.ENC_API_KEY].orEmpty()).orEmpty(),
+            sessionCookie = CryptoHelper.decrypt(prefs[Keys.ENC_SESSION_COOKIE].orEmpty()).orEmpty(),
             lastProjectRef = prefs[Keys.LAST_PROJECT_REF].orEmpty(),
             themeMode = theme,
             liveSyncEnabled = prefs[Keys.LIVE_SYNC_ENABLED] ?: true
@@ -80,6 +91,7 @@ class ConnectionStore(private val context: Context) {
 
     suspend fun saveApiKeyConnection(serverUrl: String, apiKey: String) {
         val encKey = CryptoHelper.encrypt(apiKey.trim())
+            ?: throw IllegalStateException("Could not securely store the API key on this device.")
         context.dataStore.edit { prefs ->
             prefs[Keys.SERVER_URL] = serverUrl.trim().trimEnd('/')
             prefs[Keys.AUTH_MODE] = AuthMode.API_KEY.name
@@ -90,6 +102,7 @@ class ConnectionStore(private val context: Context) {
 
     suspend fun saveSessionConnection(serverUrl: String, sessionCookie: String) {
         val encCookie = CryptoHelper.encrypt(sessionCookie.trim())
+            ?: throw IllegalStateException("Could not securely store the session on this device.")
         context.dataStore.edit { prefs ->
             prefs[Keys.SERVER_URL] = serverUrl.trim().trimEnd('/')
             prefs[Keys.AUTH_MODE] = AuthMode.SESSION.name
@@ -100,7 +113,8 @@ class ConnectionStore(private val context: Context) {
 
     suspend fun updateSessionCookie(sessionCookie: String) {
         if (sessionCookie.isBlank()) return
-        val encCookie = CryptoHelper.encrypt(sessionCookie.trim())
+        // Keep the previous cookie if this one cannot be protected.
+        val encCookie = CryptoHelper.encrypt(sessionCookie.trim()) ?: return
         context.dataStore.edit { prefs ->
             if (prefs[Keys.AUTH_MODE] == AuthMode.SESSION.name) {
                 prefs[Keys.ENC_SESSION_COOKIE] = encCookie
