@@ -18,6 +18,8 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AssignmentInd
 import androidx.compose.material.icons.rounded.Autorenew
 import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.rounded.Inbox
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.ViewKanban
@@ -66,6 +68,7 @@ enum class MainTab(
     val unselectedIcon: ImageVector,
     val testTag: String
 ) {
+    HOME("Home", Icons.Rounded.Home, Icons.Outlined.Home, "nav_tab_home"),
     BOARD("Board", Icons.Rounded.ViewKanban, Icons.Outlined.ViewKanban, "nav_tab_board"),
     MY_ISSUES("My Issues", Icons.Rounded.AssignmentInd, Icons.Outlined.AssignmentInd, "nav_tab_my_issues"),
     INBOX("Inbox", Icons.Rounded.Inbox, Icons.Outlined.Inbox, "nav_tab_inbox"),
@@ -110,7 +113,7 @@ fun MainShell(
     docsViewModel: DocsViewModel,
     windowSize: AppWindowSize = AppWindowSize.COMPACT
 ) {
-    var currentTab by rememberSaveable { mutableStateOf(MainTab.BOARD) }
+    var currentTab by rememberSaveable { mutableStateOf(MainTab.HOME) }
     val issueStack = rememberSaveable(saver = OpenIssueStackSaver) { mutableStateListOf<OpenIssueEntry>() }
     var issueFullscreen by rememberSaveable { mutableStateOf(false) }
 
@@ -153,7 +156,8 @@ fun MainShell(
     // beside the originating list in a two-pane layout instead, so opening an
     // issue never loses the list's scroll position or filters.
     val activeIssue = issueStack.lastOrNull()
-    val showsIssueList = currentTab == MainTab.BOARD || currentTab == MainTab.MY_ISSUES || currentTab == MainTab.INBOX
+    val showsIssueList = currentTab == MainTab.HOME || currentTab == MainTab.BOARD ||
+        currentTab == MainTab.MY_ISSUES || currentTab == MainTab.INBOX
 
     if (activeIssue != null && (windowSize.isCompact || !showsIssueList || issueFullscreen)) {
         val knownBoard = if (activeIssue.projectRef == null || activeIssue.projectRef == appState.selectedProject?.routeKey) {
@@ -431,6 +435,19 @@ private fun MainTabContent(
     onOpenComment: (Int, String?, Int) -> Unit
 ) {
     when (currentTab) {
+        MainTab.HOME -> {
+            HomeScreen(
+                user = user,
+                myIssuesViewModel = myIssuesViewModel,
+                inboxViewModel = inboxViewModel,
+                unreadCount = appState.unreadNotifications,
+                onOpenIssue = onOpenIssue,
+                onOpenComment = onOpenComment,
+                onShowMessage = { appViewModel.showSnackbar(it) },
+                windowSize = windowSize
+            )
+        }
+
         MainTab.BOARD -> {
             BoardScreen(
                 state = appState,

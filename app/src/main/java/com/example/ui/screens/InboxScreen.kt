@@ -78,7 +78,8 @@ fun InboxScreen(
     onUnreadChanged: () -> Unit,
     onOpenIssue: (issueId: Int, projectRef: String?) -> Unit,
     onOpenComment: (issueId: Int, projectRef: String?, commentId: Int) -> Unit,
-    onShowMessage: (String) -> Unit
+    onShowMessage: (String) -> Unit,
+    showHeader: Boolean = true
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var snoozeTarget by remember { mutableStateOf<NotificationDto?>(null) }
@@ -102,13 +103,32 @@ fun InboxScreen(
                     .padding(horizontal = 14.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Inbox", style = MaterialTheme.typography.titleLarge)
-                    Row {
+                if (showHeader) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Inbox", style = MaterialTheme.typography.titleLarge)
+                        Row {
+                            IconButton(
+                                onClick = { viewModel.markAllRead(onUnreadChanged) },
+                                modifier = Modifier.testTag("inbox_mark_all_read")
+                            ) {
+                                Icon(Icons.Rounded.DoneAll, contentDescription = "Mark all notifications read")
+                            }
+                            IconButton(onClick = { viewModel.loadNotifications(reset = true) }) {
+                                Icon(Icons.Rounded.Refresh, contentDescription = "Refresh inbox")
+                            }
+                        }
+                    }
+                } else {
+                    // Still expose the inbox actions without the duplicate title.
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         IconButton(
                             onClick = { viewModel.markAllRead(onUnreadChanged) },
                             modifier = Modifier.testTag("inbox_mark_all_read")

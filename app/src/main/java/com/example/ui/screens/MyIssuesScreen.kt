@@ -60,7 +60,9 @@ import com.example.ui.viewmodel.MyIssuesViewModel
 fun MyIssuesScreen(
     currentUserId: String,
     viewModel: MyIssuesViewModel,
-    onOpenIssue: (issueId: Int, projectRef: String?) -> Unit
+    onOpenIssue: (issueId: Int, projectRef: String?) -> Unit,
+    // The Home dashboard supplies its own header and tab bar.
+    showHeader: Boolean = true
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -76,14 +78,16 @@ fun MyIssuesScreen(
                     .padding(horizontal = 14.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("My Issues & Search", style = MaterialTheme.typography.titleLarge)
-                    IconButton(onClick = { viewModel.load(currentUserId) }) {
-                        Icon(Icons.Rounded.Refresh, contentDescription = "Refresh issues")
+                if (showHeader) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("My Issues & Search", style = MaterialTheme.typography.titleLarge)
+                        IconButton(onClick = { viewModel.load(currentUserId) }) {
+                            Icon(Icons.Rounded.Refresh, contentDescription = "Refresh issues")
+                        }
                     }
                 }
 
