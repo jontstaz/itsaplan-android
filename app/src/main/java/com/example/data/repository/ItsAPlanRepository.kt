@@ -582,12 +582,14 @@ class ItsAPlanRepository(
     suspend fun listInitiatives(
         projectRef: String,
         status: String? = null,
-        search: String? = null
+        search: String? = null,
+        page: Int = 1
     ): Result<InitiativePageResponse> = safeCall {
         clientManager.getApi().listInitiatives(
             projectRef,
             status = status,
-            search = search?.takeIf { it.isNotBlank() }
+            search = search?.takeIf { it.isNotBlank() },
+            page = page
         )
     }
 

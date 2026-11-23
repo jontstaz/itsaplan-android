@@ -130,6 +130,17 @@ fun InitiativesPane(
                     items(state.initiatives, key = { it.id }) { initiative ->
                         InitiativeCard(initiative = initiative)
                     }
+                    if (state.hasMore) {
+                        item(key = "load_more") {
+                            TextButton(
+                                onClick = { viewModel.loadMore() },
+                                enabled = !state.isLoadingMore,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(if (state.isLoadingMore) "Loading…" else "Load more")
+                            }
+                        }
+                    }
                 }
             }
         }

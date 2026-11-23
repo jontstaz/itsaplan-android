@@ -346,10 +346,15 @@ private fun NotificationCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                // The project name gives way to the actions: at large font scales a long
+                // name must not push mark-read/snooze/delete off the card.
                 Text(
                     text = item.projectName.ifBlank { item.projectKey },
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
                 )
                 Row {
                     IconButton(onClick = onToggleRead, modifier = Modifier.size(34.dp)) {

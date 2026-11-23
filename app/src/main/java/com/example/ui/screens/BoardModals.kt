@@ -401,6 +401,13 @@ fun MoveColumnSheet(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(6.dp))
+            // A project can have more columns than fit a short screen; scroll them rather
+            // than letting the sheet run past the window.
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 420.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
             columns.forEach { col ->
                 val count = issuesByColumn[col.id]?.size ?: 0
                 val isCurrent = col.id == issue.columnId
@@ -424,6 +431,7 @@ fun MoveColumnSheet(
                         .fillMaxWidth()
                         .clickable { onSelectColumn(col.id) }
                 )
+            }
             }
         }
     }

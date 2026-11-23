@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.model.InitiativeDto
 import com.example.data.repository.ItsAPlanRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,6 +23,9 @@ data class InitiativesUiState(
     val filter: InitiativeFilter = InitiativeFilter.OPEN,
     val initiatives: List<InitiativeDto> = emptyList(),
     val isLoading: Boolean = false,
+    val page: Int = 1,
+    val hasMore: Boolean = false,
+    val isLoadingMore: Boolean = false,
     val isSaving: Boolean = false,
     val error: String? = null,
     val message: String? = null
@@ -34,21 +38,63 @@ class InitiativesViewModel(
     private val _uiState = MutableStateFlow(InitiativesUiState())
     val uiState: StateFlow<InitiativesUiState> = _uiState.asStateFlow()
 
+    private var loadJob: Job? = null
+
     fun load(projectRef: String, filter: InitiativeFilter = _uiState.value.filter) {
         if (projectRef.isBlank()) return
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             _uiState.update {
                 it.copy(projectRef = projectRef, filter = filter, isLoading = true, error = null)
             }
-            repository.listInitiatives(projectRef, status = filter.statuses).fold(
+            repository.listInitiatives(projectRef, status = filter.statuses, page = 1).fold(
                 onSuccess = { page ->
                     _uiState.update {
-                        it.copy(initiatives = page.items, isLoading = false, error = null)
+                        it.copy(
+                            initiatives = page.items,
+                            page = 1,
+                            hasMore = page.items.size < page.total,
+                            isLoading = false,
+                            error = null
+                        )
                     }
                 },
                 onFailure = { err ->
                     _uiState.update {
                         it.copy(isLoading = false, error = err.message ?: "Failed to load initiatives.")
+                    }
+                }
+            )
+        }
+    }
+
+    /** Appends the next page; ignored while another page is already loading. */
+    fun loadMore() {
+        val state = _uiState.value
+        if (!state.hasMore || state.isLoadingMore || state.isLoading) return
+        val nextPage = state.page + 1
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingMore = true) }
+            repository.listInitiatives(
+                projectRef = state.projectRef,
+                status = state.filter.statuses,
+                page = nextPage
+            ).fold(
+                onSuccess = { page ->
+                    _uiState.update { current ->
+                        // A page for a filter that is no longer selected is dropped.
+                        if (current.filter != state.filter) current.copy(isLoadingMore = false)
+                        else current.copy(
+                            initiatives = (current.initiatives + page.items).distinctBy { it.id },
+                            page = nextPage,
+                            hasMore = (current.initiatives.size + page.items.size) < page.total,
+                            isLoadingMore = false
+                        )
+                    }
+                },
+                onFailure = { err ->
+                    _uiState.update {
+                        it.copy(isLoadingMore = false, message = err.message ?: "Could not load more initiatives.")
                     }
                 }
             )
