@@ -169,5 +169,6 @@ focused and consistent with the existing Compose/MVVM structure described above.
 
 ## License
 
-See [LICENSE](LICENSE) (add one before making this repository public — e.g. MIT or Apache-2.0).
+[MIT](LICENSE) © 2026 jontstaz.
+
 This project is not affiliated with, endorsed by, or sponsored by the It's a Plan project.
