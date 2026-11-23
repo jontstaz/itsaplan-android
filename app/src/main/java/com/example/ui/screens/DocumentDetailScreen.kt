@@ -19,6 +19,8 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Fullscreen
+import androidx.compose.material.icons.rounded.FullscreenExit
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material3.AlertDialog
@@ -58,7 +60,9 @@ import com.example.ui.components.ThemedMarkdownText
 fun DocumentDetailScreen(
     viewModel: DocsViewModel,
     onBack: () -> Unit,
-    serverBaseUrl: String = ""
+    serverBaseUrl: String = "",
+    isFullscreen: Boolean = false,
+    onToggleFullscreen: (() -> Unit)? = null
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val doc = state.activeDocument
@@ -117,6 +121,17 @@ fun DocumentDetailScreen(
                     )
                 },
                 actions = {
+                    if (onToggleFullscreen != null) {
+                        IconButton(
+                            onClick = onToggleFullscreen,
+                            modifier = Modifier.testTag("doc_fullscreen_toggle")
+                        ) {
+                            Icon(
+                                imageVector = if (isFullscreen) Icons.Rounded.FullscreenExit else Icons.Rounded.Fullscreen,
+                                contentDescription = if (isFullscreen) "Exit fullscreen" else "Open fullscreen"
+                            )
+                        }
+                    }
                     if (doc != null) {
                         IconButton(
                             onClick = {

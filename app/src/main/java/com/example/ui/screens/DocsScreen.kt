@@ -69,6 +69,15 @@ fun DocsScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showCreateDialog by remember { mutableStateOf(false) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    // Unfolded/large screens default to the list + detail split; this lets the
+    // reader widen a single doc to the whole pane, mirroring the issue view.
+    var docFullscreen by rememberSaveable { mutableStateOf(false) }
+
+    // Leaving the doc (or switching away) should not strand the next one in
+    // fullscreen.
+    LaunchedEffect(state.activeDocument?.id) {
+        if (state.activeDocument == null) docFullscreen = false
+    }
 
     LaunchedEffect(selectedProject?.routeKey) {
         selectedProject?.let { viewModel.loadDocuments(it.routeKey) }
@@ -87,6 +96,20 @@ fun DocsScreen(
             viewModel = viewModel,
             onBack = { viewModel.closeDocument() },
             serverBaseUrl = serverBaseUrl
+        )
+        return
+    }
+
+    // Two-pane fullscreen: the doc takes the whole width, so the list chrome
+    // (top bar, search field) is skipped entirely rather than stacked above it.
+    if (state.activeDocument != null && twoPane && docFullscreen) {
+        DocumentDetailScreen(
+            viewModel = viewModel,
+            // Back leaves fullscreen, then closes the doc on a second press.
+            onBack = { docFullscreen = false },
+            serverBaseUrl = serverBaseUrl,
+            isFullscreen = true,
+            onToggleFullscreen = { docFullscreen = false }
         )
         return
     }
@@ -204,7 +227,9 @@ fun DocsScreen(
                                 DocumentDetailScreen(
                                     viewModel = viewModel,
                                     onBack = { viewModel.closeDocument() },
-                                    serverBaseUrl = serverBaseUrl
+                                    serverBaseUrl = serverBaseUrl,
+                                    isFullscreen = false,
+                                    onToggleFullscreen = { docFullscreen = true }
                                 )
                             } else {
                                 EmptyStateView(
