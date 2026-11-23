@@ -619,6 +619,43 @@ data class CyclePageResponse(
     val totalPages: Int = 1
 )
 
+data class InitiativeProgressDto(
+    val completed: Int = 0,
+    val canceled: Int = 0,
+    val total: Int = 0
+)
+
+data class InitiativeDto(
+    val id: Int = 0,
+    val projectId: Int = 0,
+    val title: String = "",
+    val description: String = "",
+    val status: String = "proposed",
+    val ownerUserId: String? = null,
+    val priority: String? = null,
+    val startDate: String? = null,
+    val targetDate: String? = null,
+    val position: Double = 0.0,
+    val createdAt: String? = null,
+    val updatedAt: String? = null,
+    val labelIds: List<Int> = emptyList(),
+    val progress: InitiativeProgressDto = InitiativeProgressDto(),
+    val health: String? = null,
+    val favorite: Boolean = false
+) {
+    /** Share of linked issues that are done or dropped. */
+    val progressFraction: Float
+        get() = if (progress.total <= 0) 0f
+        else (progress.completed + progress.canceled).toFloat() / progress.total
+}
+
+data class InitiativePageResponse(
+    val items: List<InitiativeDto> = emptyList(),
+    val total: Int = 0,
+    val page: Int = 1,
+    val pageSize: Int = 25
+)
+
 // --- Notifications ---
 
 data class NotificationPageResponse(

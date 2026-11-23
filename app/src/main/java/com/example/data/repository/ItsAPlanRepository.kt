@@ -24,6 +24,8 @@ import com.example.data.model.FeedPageResponse
 import com.example.data.model.HealthResponse
 import com.example.data.model.IssueAgentRunPageDto
 import com.example.data.model.IssueDetailDto
+import com.example.data.model.InitiativeDto
+import com.example.data.model.InitiativePageResponse
 import com.example.data.model.IssueLinkDto
 import com.example.data.model.IssueResponseDto
 import com.example.data.model.IssueSearchHitDto
@@ -520,6 +522,46 @@ class ItsAPlanRepository(
 
     suspend fun listCompletedCycles(projectRef: String, page: Int = 1): Result<CyclePageResponse> = safeCall {
         clientManager.getApi().listCompletedCycles(projectRef, page = page, pageSize = 20)
+    }
+
+    suspend fun listInitiatives(
+        projectRef: String,
+        status: String? = null,
+        search: String? = null
+    ): Result<InitiativePageResponse> = safeCall {
+        clientManager.getApi().listInitiatives(
+            projectRef,
+            status = status,
+            search = search?.takeIf { it.isNotBlank() }
+        )
+    }
+
+    suspend fun createInitiative(
+        projectRef: String,
+        title: String,
+        description: String?,
+        status: String?,
+        targetDate: String?
+    ): Result<InitiativeDto> = safeCall {
+        val map = mutableMapOf<String, Any?>("title" to title.trim())
+        description?.takeIf { it.isNotBlank() }?.let { map["description"] = it.trim() }
+        status?.takeIf { it.isNotBlank() }?.let { map["status"] = it }
+        targetDate?.takeIf { it.isNotBlank() }?.let { map["targetDate"] = it.trim() }
+        clientManager.getApi().createInitiative(projectRef, jsonBodyFromMap(map))
+    }
+
+    suspend fun updateInitiativeStatus(initiativeId: Int, status: String): Result<InitiativeDto> = safeCall {
+        clientManager.getApi().updateInitiative(
+            initiativeId,
+            jsonBodyFromMap(mapOf("status" to status))
+        )
+    }
+
+    suspend fun deleteInitiative(initiativeId: Int): Result<Unit> = safeCall {
+        val response = clientManager.getApi().deleteInitiative(initiativeId)
+        if (!response.isSuccessful && response.code() != 204) {
+            throw ApiException(response.code(), "Could not delete initiative.")
+        }
     }
 
     suspend fun createCycle(

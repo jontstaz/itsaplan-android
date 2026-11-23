@@ -35,6 +35,7 @@ import com.example.ui.viewmodel.AuthState
 import com.example.ui.viewmodel.CyclesViewModel
 import com.example.ui.viewmodel.DocsViewModel
 import com.example.ui.viewmodel.InboxViewModel
+import com.example.ui.viewmodel.InitiativesViewModel
 import com.example.ui.viewmodel.IssueDetailViewModel
 import com.example.ui.viewmodel.MyIssuesViewModel
 import com.example.ui.layout.toAppWindowSize
@@ -66,6 +67,7 @@ class MainActivity : ComponentActivity() {
             val issueDetailViewModel: IssueDetailViewModel = viewModel(factory = vmFactory)
             val inboxViewModel: InboxViewModel = viewModel(factory = vmFactory)
             val cyclesViewModel: CyclesViewModel = viewModel(factory = vmFactory)
+            val initiativesViewModel: InitiativesViewModel = viewModel(factory = vmFactory)
             val myIssuesViewModel: MyIssuesViewModel = viewModel(factory = vmFactory)
             val docsViewModel: DocsViewModel = viewModel(factory = vmFactory)
 
@@ -98,6 +100,7 @@ class MainActivity : ComponentActivity() {
                             issueDetailViewModel = issueDetailViewModel,
                             inboxViewModel = inboxViewModel,
                             cyclesViewModel = cyclesViewModel,
+                            initiativesViewModel = initiativesViewModel,
                             myIssuesViewModel = myIssuesViewModel,
                             docsViewModel = docsViewModel,
                             windowSize = appWindowSize
@@ -143,6 +146,7 @@ private class AppViewModelFactory(
             modelClass.isAssignableFrom(InboxViewModel::class.java) -> InboxViewModel(repository) as T
             modelClass.isAssignableFrom(CyclesViewModel::class.java) -> CyclesViewModel(repository) as T
             modelClass.isAssignableFrom(MyIssuesViewModel::class.java) -> MyIssuesViewModel(repository, context.applicationContext as android.app.Application) as T
+            modelClass.isAssignableFrom(InitiativesViewModel::class.java) -> InitiativesViewModel(repository) as T
             modelClass.isAssignableFrom(DocsViewModel::class.java) -> DocsViewModel(repository) as T
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }

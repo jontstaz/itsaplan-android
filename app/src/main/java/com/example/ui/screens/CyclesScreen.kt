@@ -26,12 +26,16 @@ import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.MoveUp
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.RocketLaunch
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -65,20 +69,40 @@ import com.example.ui.theme.Amber500
 import com.example.ui.theme.Emerald500
 import com.example.ui.theme.MonoCodeStyle
 import com.example.ui.viewmodel.CyclesViewModel
+import com.example.ui.viewmodel.InitiativesViewModel
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+
+private enum class CyclesTab { CYCLES, INITIATIVES }
 
 @Composable
 fun CyclesScreen(
     selectedProject: ProjectListItem?,
     viewModel: CyclesViewModel,
+    initiativesViewModel: InitiativesViewModel,
     onBoardRefresh: () -> Unit,
     onFilterBoardByCycle: (Int) -> Unit,
     onShowMessage: (String) -> Unit
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showCreateDialog by remember { mutableStateOf(false) }
+    var tab by rememberSaveable { mutableStateOf(CyclesTab.CYCLES) }
+    var showCreateInitiative by remember { mutableStateOf(false) }
+    val initiativesState by initiativesViewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(selectedProject?.routeKey, tab) {
+        if (tab == CyclesTab.INITIATIVES) {
+            selectedProject?.let { initiativesViewModel.load(it.routeKey) }
+        }
+    }
+
+    LaunchedEffect(initiativesState.message) {
+        initiativesState.message?.let {
+            onShowMessage(it)
+            initiativesViewModel.clearMessage()
+        }
+    }
     var transferSourceCycle by remember { mutableStateOf<CycleDto?>(null) }
 
     LaunchedEffect(selectedProject?.routeKey, selectedProject?.cyclesEnabled) {
@@ -96,40 +120,93 @@ fun CyclesScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 1.dp) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Cycles", style = MaterialTheme.typography.titleLarge)
-                    if (selectedProject != null) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "${selectedProject.key} · ${selectedProject.name}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = if (tab == CyclesTab.CYCLES) "Cycles" else "Initiatives",
+                            style = MaterialTheme.typography.titleLarge
                         )
+                        if (selectedProject != null) {
+                            Text(
+                                text = "${selectedProject.key} · ${selectedProject.name}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    if (tab == CyclesTab.CYCLES) {
+                        if (selectedProject?.cyclesEnabled == true) {
+                            IconButton(onClick = { viewModel.loadCycles(selectedProject.routeKey) }) {
+                                Icon(Icons.Rounded.Refresh, contentDescription = "Refresh cycles")
+                            }
+                            FilledTonalButton(
+                                onClick = { showCreateDialog = true },
+                                modifier = Modifier.testTag("create_cycle_button")
+                            ) {
+                                Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("New Cycle")
+                            }
+                        }
+                    } else if (selectedProject != null) {
+                        IconButton(onClick = { initiativesViewModel.load(selectedProject.routeKey) }) {
+                            Icon(Icons.Rounded.Refresh, contentDescription = "Refresh initiatives")
+                        }
+                        FilledTonalButton(
+                            onClick = { showCreateInitiative = true },
+                            modifier = Modifier.testTag("create_initiative_button")
+                        ) {
+                            Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("New Initiative")
+                        }
                     }
                 }
-                if (selectedProject?.cyclesEnabled == true) {
-                    IconButton(onClick = { viewModel.loadCycles(selectedProject.routeKey) }) {
-                        Icon(Icons.Rounded.Refresh, contentDescription = "Refresh cycles")
-                    }
-                    FilledTonalButton(
-                        onClick = { showCreateDialog = true },
-                        modifier = Modifier.testTag("create_cycle_button")
-                    ) {
-                        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("New Cycle")
-                    }
+
+                SingleChoiceSegmentedButtonRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp)
+                        .padding(bottom = 12.dp)
+                ) {
+                    SegmentedButton(
+                        selected = tab == CyclesTab.CYCLES,
+                        onClick = { tab = CyclesTab.CYCLES },
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Rounded.Autorenew,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    ) { Text("Cycles") }
+                    SegmentedButton(
+                        selected = tab == CyclesTab.INITIATIVES,
+                        onClick = { tab = CyclesTab.INITIATIVES },
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Rounded.RocketLaunch,
+                                contentDescription = null,
+                                tint = Emerald500,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    ) { Text("Initiatives") }
                 }
             }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
+        if (tab == CyclesTab.CYCLES) {
         when {
             selectedProject == null -> {
                 EmptyStateView(
@@ -237,6 +314,16 @@ fun CyclesScreen(
                     }
                 }
             }
+        }
+        } else {
+            InitiativesPane(
+                project = selectedProject,
+                viewModel = initiativesViewModel,
+                showCreateDialog = showCreateInitiative,
+                onCreateRequested = { showCreateInitiative = true },
+                onDismissCreate = { showCreateInitiative = false },
+                modifier = Modifier.fillMaxSize()
+            )
         }
     }
 

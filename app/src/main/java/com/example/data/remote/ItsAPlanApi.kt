@@ -17,6 +17,8 @@ import com.example.data.model.FeedPageResponse
 import com.example.data.model.HealthResponse
 import com.example.data.model.IssueAgentRunPageDto
 import com.example.data.model.IssueDetailDto
+import com.example.data.model.InitiativeDto
+import com.example.data.model.InitiativePageResponse
 import com.example.data.model.IssueLinkDto
 import com.example.data.model.IssueResponseDto
 import com.example.data.model.IssueSearchHitDto
@@ -336,6 +338,32 @@ interface ItsAPlanApi {
         @Path("projectKey", encoded = false) projectKey: String,
         @Path("labelId") labelId: Int
     ): Response<ResponseBody>
+
+    // --- Initiatives ---
+
+    @GET("projects/{projectKey}/initiatives")
+    suspend fun listInitiatives(
+        @Path("projectKey", encoded = false) projectKey: String,
+        @Query("status") status: String? = null,
+        @Query("search") search: String? = null,
+        @Query("page") page: Int = 1,
+        @Query("pageSize") pageSize: Int = 50
+    ): InitiativePageResponse
+
+    @POST("projects/{projectKey}/initiatives")
+    suspend fun createInitiative(
+        @Path("projectKey", encoded = false) projectKey: String,
+        @Body body: RequestBody
+    ): InitiativeDto
+
+    @PATCH("initiatives/{initiativeId}")
+    suspend fun updateInitiative(
+        @Path("initiativeId") initiativeId: Int,
+        @Body body: RequestBody
+    ): InitiativeDto
+
+    @DELETE("initiatives/{initiativeId}")
+    suspend fun deleteInitiative(@Path("initiativeId") initiativeId: Int): Response<ResponseBody>
 
     // --- Cycles ---
 

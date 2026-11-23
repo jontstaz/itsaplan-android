@@ -59,6 +59,7 @@ import com.example.ui.viewmodel.AppViewModel
 import com.example.ui.viewmodel.CyclesViewModel
 import com.example.ui.viewmodel.DocsViewModel
 import com.example.ui.viewmodel.InboxViewModel
+import com.example.ui.viewmodel.InitiativesViewModel
 import com.example.ui.viewmodel.IssueDetailViewModel
 import com.example.ui.viewmodel.MyIssuesViewModel
 
@@ -66,12 +67,14 @@ enum class MainTab(
     val label: String,
     val selectedIcon: ImageVector,
     val unselectedIcon: ImageVector,
-    val testTag: String
+    val testTag: String,
+    /** Shown in the bottom bar / rail. My Issues and Inbox live inside Home now. */
+    val inNav: Boolean = true
 ) {
     HOME("Home", Icons.Rounded.Home, Icons.Outlined.Home, "nav_tab_home"),
     BOARD("Board", Icons.Rounded.ViewKanban, Icons.Outlined.ViewKanban, "nav_tab_board"),
-    MY_ISSUES("My Issues", Icons.Rounded.AssignmentInd, Icons.Outlined.AssignmentInd, "nav_tab_my_issues"),
-    INBOX("Inbox", Icons.Rounded.Inbox, Icons.Outlined.Inbox, "nav_tab_inbox"),
+    MY_ISSUES("My Issues", Icons.Rounded.AssignmentInd, Icons.Outlined.AssignmentInd, "nav_tab_my_issues", inNav = false),
+    INBOX("Inbox", Icons.Rounded.Inbox, Icons.Outlined.Inbox, "nav_tab_inbox", inNav = false),
     CYCLES("Cycles", Icons.Rounded.Autorenew, Icons.Outlined.Autorenew, "nav_tab_cycles"),
     DOCS("Docs", Icons.Rounded.Description, Icons.Outlined.Description, "nav_tab_docs"),
     SETTINGS("Settings", Icons.Rounded.Settings, Icons.Outlined.Settings, "nav_tab_settings")
@@ -109,6 +112,7 @@ fun MainShell(
     issueDetailViewModel: IssueDetailViewModel,
     inboxViewModel: InboxViewModel,
     cyclesViewModel: CyclesViewModel,
+    initiativesViewModel: InitiativesViewModel,
     myIssuesViewModel: MyIssuesViewModel,
     docsViewModel: DocsViewModel,
     windowSize: AppWindowSize = AppWindowSize.COMPACT
@@ -196,7 +200,7 @@ fun MainShell(
             bottomBar = {
                 if (!useNavRail) {
                     NavigationBar {
-                        MainTab.entries.forEach { tab ->
+                        MainTab.entries.filter { it.inNav }.forEach { tab ->
                             val selected = currentTab == tab
                             NavigationBarItem(
                                 selected = selected,
@@ -210,7 +214,7 @@ fun MainShell(
                                 },
                                 label = {
                                     Text(
-                                        text = if (tab == MainTab.MY_ISSUES) "My" else tab.label,
+                                        text = tab.label,
                                         style = MaterialTheme.typography.labelSmall,
                                         maxLines = 1,
                                         softWrap = false
@@ -245,7 +249,7 @@ fun MainShell(
             ) {
                 if (useNavRail) {
                     NavigationRail(modifier = Modifier.fillMaxHeight()) {
-                        MainTab.entries.forEach { tab ->
+                        MainTab.entries.filter { it.inNav }.forEach { tab ->
                             val selected = currentTab == tab
                             NavigationRailItem(
                                 selected = selected,
@@ -278,6 +282,7 @@ fun MainShell(
                                     myIssuesViewModel = myIssuesViewModel,
                                     inboxViewModel = inboxViewModel,
                                     cyclesViewModel = cyclesViewModel,
+                                    initiativesViewModel = initiativesViewModel,
                                     docsViewModel = docsViewModel,
                                     windowSize = windowSize,
                                     onOpenIssue = { id, projRef -> openIssueAndRecord(id, projRef) },
@@ -322,6 +327,7 @@ fun MainShell(
                             myIssuesViewModel = myIssuesViewModel,
                             inboxViewModel = inboxViewModel,
                             cyclesViewModel = cyclesViewModel,
+                            initiativesViewModel = initiativesViewModel,
                             docsViewModel = docsViewModel,
                             windowSize = windowSize,
                             onOpenIssue = { id, projRef -> openIssueAndRecord(id, projRef) },
@@ -422,6 +428,7 @@ private fun MainTabContent(
     myIssuesViewModel: MyIssuesViewModel,
     inboxViewModel: InboxViewModel,
     cyclesViewModel: CyclesViewModel,
+    initiativesViewModel: InitiativesViewModel,
     docsViewModel: DocsViewModel,
     windowSize: AppWindowSize,
     onOpenIssue: (Int, String?) -> Unit,
@@ -492,6 +499,7 @@ private fun MainTabContent(
             CyclesScreen(
                 selectedProject = appState.selectedProject,
                 viewModel = cyclesViewModel,
+                initiativesViewModel = initiativesViewModel,
                 onBoardRefresh = { appViewModel.refreshBoard(silent = true) },
                 onFilterBoardByCycle = { cycleId ->
                     appViewModel.updateBoardFilters { it.copy(cycleId = cycleId, showArchived = false) }
@@ -532,7 +540,7 @@ private fun TabIconWithBadge(
     unreadCount: Int
 ) {
     val icon = if (selected) tab.selectedIcon else tab.unselectedIcon
-    if (tab == MainTab.INBOX && unreadCount > 0) {
+    if ((tab == MainTab.HOME || tab == MainTab.INBOX) && unreadCount > 0) {
         BadgedBox(
             badge = {
                 Badge {
