@@ -28,3 +28,9 @@ scripts/
 
 # Build outputs kept out of git
 dist/
+
+# Open Screenshot Generator rendered output
+osg/out/
+
+# Promo export bundle (regenerated from the source JPGs)
+promo-images/Download.zip

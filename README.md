@@ -12,7 +12,7 @@ foldables (unfolded two-pane layouts on wide screens).
 > Not affiliated with or endorsed by the It's a Plan project or its maintainers.
 
 <p align="center">
-  <img src="docs/images/hero.png" alt="It's a Plan — native companion app for the self-hosted issue tracking platform" width="100%" />
+  <img src="promo-images/banner.jpg" alt="It's a Plan — native Android client for a self-hosted itsaplan instance" width="100%" />
 </p>
 
 ## Features
@@ -52,28 +52,17 @@ foldables (unfolded two-pane layouts on wide screens).
 ## Screenshots
 
 <p align="center">
-  <img src="docs/images/home-overview.png" width="49%" alt="Home overview: greeting, recent activity, tasks and project tiles" />
-  <img src="docs/images/board-kanban.png" width="49%" alt="Three board views: Kanban, grouped list and compact list" />
-</p>
-<p align="center">
-  <img src="docs/images/issue-detail.png" width="49%" alt="Issue detail with Markdown description and metadata" />
+  <img src="promo-images/screenshots.jpg" alt="Home overview, Kanban board, list view and issue details" width="100%" />
 </p>
 
 <p align="center">
-  <a href="screenshots/home-overview-dark.png"><img src="screenshots/readme/home-overview.webp" width="190" alt="Home overview" /></a>
-  <a href="screenshots/board-kanban-dark.png"><img src="screenshots/readme/board-kanban.webp" width="190" alt="Kanban board" /></a>
-  <a href="screenshots/board-compact-dark.png"><img src="screenshots/readme/board-compact.webp" width="190" alt="Compact list" /></a>
-  <a href="screenshots/issue-detail-dark.png"><img src="screenshots/readme/issue-detail.webp" width="190" alt="Issue detail" /></a>
-</p>
-<p align="center">
-  <a href="screenshots/initiatives-dark.png"><img src="screenshots/readme/initiatives.webp" width="190" alt="Initiatives" /></a>
-  <a href="screenshots/cycles-dark.png"><img src="screenshots/readme/cycles.webp" width="190" alt="Cycles" /></a>
-  <a href="screenshots/docs-dark.png"><img src="screenshots/readme/docs.webp" width="190" alt="Docs" /></a>
-  <a href="screenshots/settings-dark.png"><img src="screenshots/readme/settings.webp" width="190" alt="Settings" /></a>
+  <img src="promo-images/featured.jpg" width="49%" alt="Dashboard and Kanban boards" />
+  <img src="promo-images/featured2.jpg" width="49%" alt="Issue triage, Markdown specs and AI delegates" />
 </p>
 
-Every screen is captured in light and dark mode at phone width in [`screenshots/`](screenshots/).
-Regenerate them with [`screenshots/capture.sh`](screenshots/capture.sh).
+Real captures of every screen, in light and dark mode at phone width, live in
+[`screenshots/`](screenshots/) and can be regenerated with
+[`screenshots/capture.sh`](screenshots/capture.sh).
 
 ## Requirements
 
