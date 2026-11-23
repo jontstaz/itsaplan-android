@@ -11,6 +11,10 @@ foldables (unfolded two-pane layouts on wide screens).
 > **Status:** personal project, works against a real self-hosted instance. Expect rough edges.
 > Not affiliated with or endorsed by the It's a Plan project or its maintainers.
 
+<p align="center">
+  <img src="docs/images/hero.png" alt="It's a Plan — native companion app for the self-hosted issue tracking platform" width="100%" />
+</p>
+
 ## Features
 
 - **Board** — Kanban and grouped-list views of a project's issues, long-press drag-and-drop
@@ -48,16 +52,24 @@ foldables (unfolded two-pane layouts on wide screens).
 ## Screenshots
 
 <p align="center">
-  <a href="screenshots/board-compact-dark.png"><img src="screenshots/readme/board.webp" width="190" alt="Kanban board" /></a>
-  <a href="screenshots/issue-detail-compact-dark.png"><img src="screenshots/readme/issue-detail.webp" width="190" alt="Issue detail" /></a>
-  <a href="screenshots/create-issue-compact-dark.png"><img src="screenshots/readme/create-issue.webp" width="190" alt="Creating an issue" /></a>
-  <a href="screenshots/tab-my-compact-dark.png"><img src="screenshots/readme/tab-my.webp" width="190" alt="My Issues" /></a>
+  <img src="docs/images/home-overview.png" width="49%" alt="Home overview: greeting, recent activity, tasks and project tiles" />
+  <img src="docs/images/board-kanban.png" width="49%" alt="Three board views: Kanban, grouped list and compact list" />
 </p>
 <p align="center">
-  <a href="screenshots/tab-inbox-compact-dark.png"><img src="screenshots/readme/tab-inbox.webp" width="190" alt="Inbox" /></a>
-  <a href="screenshots/tab-cycles-compact-dark.png"><img src="screenshots/readme/tab-cycles.webp" width="190" alt="Cycles" /></a>
-  <a href="screenshots/tab-docs-compact-dark.png"><img src="screenshots/readme/tab-docs.webp" width="190" alt="Docs" /></a>
-  <a href="screenshots/tab-settings-compact-dark.png"><img src="screenshots/readme/tab-settings.webp" width="190" alt="Settings" /></a>
+  <img src="docs/images/issue-detail.png" width="49%" alt="Issue detail with Markdown description and metadata" />
+</p>
+
+<p align="center">
+  <a href="screenshots/home-overview-dark.png"><img src="screenshots/readme/home-overview.webp" width="190" alt="Home overview" /></a>
+  <a href="screenshots/board-kanban-dark.png"><img src="screenshots/readme/board-kanban.webp" width="190" alt="Kanban board" /></a>
+  <a href="screenshots/board-compact-dark.png"><img src="screenshots/readme/board-compact.webp" width="190" alt="Compact list" /></a>
+  <a href="screenshots/issue-detail-dark.png"><img src="screenshots/readme/issue-detail.webp" width="190" alt="Issue detail" /></a>
+</p>
+<p align="center">
+  <a href="screenshots/initiatives-dark.png"><img src="screenshots/readme/initiatives.webp" width="190" alt="Initiatives" /></a>
+  <a href="screenshots/cycles-dark.png"><img src="screenshots/readme/cycles.webp" width="190" alt="Cycles" /></a>
+  <a href="screenshots/docs-dark.png"><img src="screenshots/readme/docs.webp" width="190" alt="Docs" /></a>
+  <a href="screenshots/settings-dark.png"><img src="screenshots/readme/settings.webp" width="190" alt="Settings" /></a>
 </p>
 
 Every screen is captured in light and dark mode at phone width in [`screenshots/`](screenshots/).
