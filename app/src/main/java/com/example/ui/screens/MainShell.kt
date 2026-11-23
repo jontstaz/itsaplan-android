@@ -445,13 +445,22 @@ private fun MainTabContent(
         MainTab.HOME -> {
             HomeScreen(
                 user = user,
+                projects = appState.projects,
                 myIssuesViewModel = myIssuesViewModel,
                 inboxViewModel = inboxViewModel,
                 unreadCount = appState.unreadNotifications,
                 onOpenIssue = onOpenIssue,
                 onOpenComment = onOpenComment,
                 onShowMessage = { appViewModel.showSnackbar(it) },
-                onUnreadChanged = { appViewModel.refreshUnreadCount() },
+                onRefresh = {
+                    appViewModel.refreshUnreadCount()
+                    myIssuesViewModel.load(user.id)
+                },
+                onOpenSearch = onOpenGlobalSearch,
+                onOpenProjectBoard = { project ->
+                    appViewModel.selectProject(project)
+                    onSwitchTab(MainTab.BOARD)
+                },
                 windowSize = windowSize
             )
         }
