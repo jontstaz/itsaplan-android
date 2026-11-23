@@ -71,6 +71,22 @@ class ItsAPlanRepository(
     val connectionFlow: Flow<StoredConnection> = store.connectionFlow
 
     /**
+     * Clears account-scoped local caches when the signed-in account or server changes,
+     * so a draft, recent issue or widget entry from one account can never surface under
+     * another (or be submitted to a different server).
+     */
+    private suspend fun onSessionEstablished(serverUrl: String, userId: String) {
+        val scope = "${serverUrl.lowercase().trimEnd('/')}|$userId"
+        val previous = store.accountScope()
+        if (previous.isNotEmpty() && previous != scope) {
+            DraftStore(context).clearAll()
+            RecentIssuesStore(context).clearAll()
+            WidgetCache(context).clear()
+        }
+        store.setAccountScope(scope)
+    }
+
+    /**
      * Retrofit hands back `Response<…>` for bodyless endpoints without throwing on
      * non-2xx, so without this a 403 or 500 would be reported to the UI as success.
      */
@@ -115,6 +131,7 @@ class ItsAPlanRepository(
         }
         store.saveApiKeyConnection(normalized, trimmedKey)
         clientManager.configure(normalized, AuthMode.API_KEY, apiKey = trimmedKey)
+        onSessionEstablished(normalized, me.user.id)
         me.user
     }
 
@@ -165,6 +182,7 @@ class ItsAPlanRepository(
 
         store.saveSessionConnection(normalized, cookies)
         clientManager.configure(normalized, AuthMode.SESSION, sessionCookie = cookies)
+        onSessionEstablished(normalized, me.user.id)
         me.user
     }
 
@@ -179,6 +197,7 @@ class ItsAPlanRepository(
         )
         val me = clientManager.getApi().getMe()
         if (me.authenticated && me.user != null) {
+            onSessionEstablished(saved.serverUrl, me.user.id)
             me.user
         } else {
             store.clearAuth(keepServerUrl = true)

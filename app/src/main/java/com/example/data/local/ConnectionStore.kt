@@ -53,6 +53,8 @@ class ConnectionStore(private val context: Context) {
         val ENC_API_KEY = stringPreferencesKey("enc_api_key")
         val ENC_SESSION_COOKIE = stringPreferencesKey("enc_session_cookie")
         val LAST_PROJECT_REF = stringPreferencesKey("last_project_ref")
+        /** "<serverUrl>|<userId>" of the account the local caches belong to. */
+        val ACCOUNT_SCOPE = stringPreferencesKey("account_scope")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val LIVE_SYNC_ENABLED = booleanPreferencesKey("live_sync_enabled")
     }
@@ -122,6 +124,13 @@ class ConnectionStore(private val context: Context) {
         }
     }
 
+    suspend fun accountScope(): String =
+        context.dataStore.data.first()[Keys.ACCOUNT_SCOPE].orEmpty()
+
+    suspend fun setAccountScope(scope: String) {
+        context.dataStore.edit { it[Keys.ACCOUNT_SCOPE] = scope }
+    }
+
     suspend fun saveLastProjectRef(projectRef: String) {
         context.dataStore.edit { prefs ->
             prefs[Keys.LAST_PROJECT_REF] = projectRef
@@ -145,6 +154,7 @@ class ConnectionStore(private val context: Context) {
             if (!keepServerUrl) {
                 prefs.remove(Keys.SERVER_URL)
             }
+            prefs.remove(Keys.ACCOUNT_SCOPE)
             prefs[Keys.AUTH_MODE] = AuthMode.NONE.name
             prefs.remove(Keys.ENC_API_KEY)
             prefs.remove(Keys.ENC_SESSION_COOKIE)
