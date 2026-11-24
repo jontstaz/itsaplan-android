@@ -12,7 +12,7 @@ foldables (unfolded two-pane layouts on wide screens).
 > Not affiliated with or endorsed by the It's a Plan project or its maintainers.
 
 <p align="center">
-  <img src="promo-images/banner.jpg" alt="It's a Plan — native Android client for a self-hosted itsaplan instance" width="100%" />
+  <img src="promo-images/itsaplan-banner.png" alt="It's a Plan — native Android client for a self-hosted itsaplan instance" width="100%" />
 </p>
 
 ## Features
@@ -52,12 +52,12 @@ foldables (unfolded two-pane layouts on wide screens).
 ## Screenshots
 
 <p align="center">
-  <img src="promo-images/screenshots.jpg" alt="Home overview, Kanban board, list view and issue details" width="100%" />
+  <img src="promo-images/itsaplan-showcase-strip.png" alt="Home overview, Kanban board, list view and issue details" width="100%" />
 </p>
 
 <p align="center">
-  <img src="promo-images/featured.jpg" width="49%" alt="Dashboard and Kanban boards" />
-  <img src="promo-images/featured2.jpg" width="49%" alt="Issue triage, Markdown specs and AI delegates" />
+  <img src="promo-images/itsaplan-feature-workspace.png" width="49%" alt="Dashboard and Kanban boards" />
+  <img src="promo-images/itsaplan-feature-issues.png" width="49%" alt="Issue triage, Markdown specs and AI delegates" />
 </p>
 
 Real captures of every screen, in light and dark mode at phone width, live in
