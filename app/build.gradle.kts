@@ -9,11 +9,11 @@ plugins {
 }
 
 android {
-  namespace = "com.example"
+  namespace = "io.github.jontstaz.itsaplan"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.aistudio.itsaplan.kvnqxp"
+    applicationId = "io.github.jontstaz.itsaplan"
     minSdk = 24
     targetSdk = 36
     versionCode = 5

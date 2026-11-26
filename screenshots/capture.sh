@@ -6,7 +6,7 @@ S="${1:?session id required}"
 MODE="${2:?mode label required}"
 OUT="$(dirname "$0")"
 AG="android-emu-agent"
-PKG="com.aistudio.itsaplan.kvnqxp"
+PKG="io.github.jontstaz.itsaplan"
 
 ensure_app() {
   adb -s emulator-5554 shell "dumpsys window | grep mCurrentFocus" | grep -q "$PKG" || {
