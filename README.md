@@ -196,7 +196,7 @@ Release builds are signed with a local keystore that is deliberately not committ
 `signing.env` next to the project with:
 
 ```bash
-export KEYSTORE_PATH="$PWD/my-upload-key.jks"
+export KEYSTORE_PATH="$PWD/my-upload-key-2026.jks"
 export STORE_PASSWORD="…"
 export KEY_PASSWORD="…"
 ```
@@ -211,6 +211,39 @@ source signing.env
 The signed APK lands at `app/build/outputs/apk/release/app-release.apk`. Keep the keystore and
 passwords backed up. Android will not install an update signed with a different key, so losing
 them means users have to uninstall and reinstall.
+
+Releases 0.1.0 through 0.4.0 were signed with `my-upload-key.jks` (certificate digest
+`1aeadb73…793e59`). 0.4.1 moved to `my-upload-key-2026.jks` (`f9816f7d…9080`), so anyone on 0.4.0
+has to uninstall before installing 0.4.1 or later. Keep the old keystore around to sign nothing
+further, but to prove which key produced those older files.
+
+### Installing a sideloaded build
+
+Release APKs are signed with a self-signed key, so Google Play Protect has no publisher record for
+them. On a phone with Play Protect turned on, the installer can show a "Harmful app blocked"
+dialog that calls the app fake. The build is the one published here; check your download against
+the `.sha256` file that ships beside it before you continue.
+
+Ways past the dialog:
+
+- Tap `Install anyway`.
+- Install over adb, which skips the on-device scan:
+
+  ```bash
+  adb install -r itsaplan-android-0.4.0.apk
+  ```
+
+- Turn off Settings → Google → Security → Google Play Protect → "Scan apps with Play Protect",
+  install, turn it back on.
+
+The verdict comes from a server-side reputation lookup keyed on package name and signing
+certificate, so nothing inside the APK can change it. A newly introduced application id starts
+with no history at all. If the older `com.aistudio.itsaplan.kvnqxp` build is still on the phone,
+uninstall it first: two installed apps sharing one name and icon is the shape of a repackaged
+clone, which is what that check looks for. To get the warning cleared for real, report it as a
+false positive through the "Learn more" link in the dialog, with the package name, the sha256 of
+the APK, and the signing certificate digest (`f9816f7d…9080`). Keeping the application id stable
+from then on keeps that history intact.
 
 ## Contributing
 
