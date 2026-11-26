@@ -20,6 +20,7 @@ debug.keystore
 # Release signing material (never commit)
 my-upload-key.jks
 *.jks
+*.jks.*
 signing.env
 
 # demo stuff
