@@ -9,7 +9,7 @@ class ApiClientManagerTest {
 
     @Test
     fun `https is always accepted`() {
-        ApiClientManager.assertAcceptableTransport("https://iap-api.jonte.au")
+        ApiClientManager.assertAcceptableTransport("https://example.com")
         ApiClientManager.assertAcceptableTransport("https://192.168.1.10:8443")
     }
 
